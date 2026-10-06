@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f3e9">
+  <title>Market admin · Tellabelli Village Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/admin.css">
+  <script src="/static/admin.js" defer></script>
+</head>
+<body class="admin-page">
+  <div class="topline"><span>TELLABELLI VILLAGE MARKET</span><span>MARKET ADMINISTRATION</span></div>
+  <header class="site-header admin-header">
+    <a class="brand" href="/" aria-label="Tellabelli Village Market"><span class="brand-mark">T<span>&</span>V</span><span class="brand-name">tellabelli <i>&</i> village<small>MARKET ADMIN</small></span></a>
+    <div class="admin-header-actions"><a class="market-link" href="/">← Back to market</a><button id="logout-button" class="logout-button" type="button" hidden>Sign out</button></div>
+  </header>
+  <main class="admin-shell">
+    <section id="login-panel" class="admin-login">
+      <p class="eyebrow">STAFF ACCESS</p>
+      <h1>Welcome <em>back.</em></h1>
+      <div class="login-tabs" role="tablist" aria-label="Admin sign-in type">
+        <button id="owner-login-tab" class="login-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="owner-login-panel">Super admin</button>
+        <button id="location-login-tab" class="login-tab" type="button" role="tab" aria-selected="false" aria-controls="location-login-panel">Location team admin</button>
+      </div>
+      <section id="owner-login-panel" role="tabpanel" aria-labelledby="owner-login-tab">
+        <p class="login-intro">Sign in with the owner password to manage all orders, locations, staff accounts, and products.</p>
+        <form id="owner-login-form" class="admin-login-form">
+          <label>Owner password<input name="password" type="password" required autocomplete="current-password" maxlength="256" placeholder="Enter owner password"></label>
+          <button class="button button-dark" type="submit">Sign in as super admin <span aria-hidden="true">↗</span></button>
+          <p class="form-message login-message" role="status"></p>
+        </form>
+      </section>
+      <section id="location-login-panel" role="tabpanel" aria-labelledby="location-login-tab" hidden>
+        <p class="login-intro">Sign in with the username and password assigned to your delivery location.</p>
+        <form id="location-login-form" class="admin-login-form">
+          <label>Username<input name="username" required autocomplete="username" minlength="3" maxlength="40" placeholder="Location team username"></label>
+          <label>Password<input name="password" type="password" required autocomplete="current-password" maxlength="256" placeholder="Enter your password"></label>
+          <button class="button button-dark" type="submit">Sign in to location team <span aria-hidden="true">↗</span></button>
+          <p class="form-message login-message" role="status"></p>
+        </form>
+      </section>
+    </section>
+    <section id="admin-dashboard" hidden>
+      <div class="admin-title-row"><div><p class="eyebrow">YOUR MARKET, IN GOOD HANDS</p><h1>Market <em>desk.</em></h1></div><span id="admin-mode" class="admin-mode"></span></div>
+      <section class="admin-section" aria-labelledby="orders-title">
+        <div class="admin-section-heading"><div><h2 id="orders-title">Customer orders</h2><p>Recent orders and delivery details</p></div><button id="refresh-orders" class="refresh-button" type="button" aria-label="Refresh orders" title="Refresh orders">↻</button></div>
+        <div id="orders-list" class="orders-list" aria-live="polite"></div>
+      </section>
+      <section id="owner-requests-section" class="admin-section" aria-labelledby="item-requests-title">
+        <div class="admin-section-heading"><div><h2 id="item-requests-title">Customer item requests</h2><p>Products customers would like to see in the market</p></div></div>
+        <div id="item-requests-list" class="item-requests-list" aria-live="polite"></div>
+      </section>
+      <section id="owner-prices-section" class="admin-section" aria-labelledby="prices-title">
+        <div class="admin-section-heading"><div><h2 id="prices-title">Product prices</h2><p>Price changes apply to new orders. Past orders keep their original price.</p></div></div>
+        <form id="product-create-form" class="product-create-form">
+          <h3>Add a product</h3>
+          <label>Product name<input name="name" required minlength="2" maxlength="160" placeholder="Product name"></label>
+          <label>Category<select name="category_id" id="product-category" required></select></label>
+          <label>Description<input name="description" maxlength="1000" placeholder="Short product description"></label>
+          <label>Price<input name="price" type="number" min="0.01" max="99999999.99" step="0.01" required></label>
+          <label>Unit<input name="unit" value="each" required minlength="1" maxlength="60" placeholder="e.g. 500 g"></label>
+          <label>Image URL<input name="image_url" type="url" maxlength="2048" placeholder="https://..."></label>
+          <fieldset><legend>Select available locations and enter starting stock</legend><div id="product-location-options" class="admin-location-options"></div></fieldset>
+          <button class="button button-dark" type="submit">Add product</button>
+          <p id="product-create-message" class="form-message" role="status"></p>
+        </form>
+        <div class="price-table-wrap"><table class="price-table"><thead><tr><th>Product</th><th>Category</th><th>Price</th><th><span class="sr-only">Save price</span></th></tr></thead><tbody id="products-list"></tbody></table></div>
+        <p id="price-message" class="form-message" role="status"></p>
+      </section>
+      <section id="inventory-section" class="admin-section" aria-labelledby="inventory-title">
+        <div class="admin-section-heading"><div><h2 id="inventory-title">Location inventory</h2><p>Set stock per location for products in the shared catalog.</p></div></div>
+        <div class="price-table-wrap"><table class="price-table inventory-table"><thead id="inventory-head"></thead><tbody id="inventory-list"></tbody></table></div>
+        <p id="inventory-message" class="form-message" role="status"></p>
+      </section>
+      <section id="location-admins-section" class="admin-section" aria-labelledby="location-admins-title" hidden>
+        <div class="admin-section-heading"><div><h2 id="location-admins-title">Location teams</h2><p>Create staff accounts and assign them to one or more delivery locations.</p></div></div>
+        <form id="location-admin-form" class="location-admin-form">
+          <label>Staff name<input name="display_name" required minlength="2" maxlength="120" placeholder="Team member name"></label>
+          <label>Username<input name="username" required minlength="3" maxlength="40" pattern="[A-Za-z0-9._-]+" placeholder="Unique sign-in name"></label>
+          <label>Temporary password<input name="password" type="password" required minlength="12" maxlength="256" autocomplete="new-password" placeholder="At least 12 characters"></label>
+          <fieldset><legend>Assigned locations</legend><div id="admin-location-options" class="admin-location-options"></div></fieldset>
+          <button class="button button-dark" type="submit">Create location account</button>
+          <p id="location-admin-message" class="form-message" role="status"></p>
+        </form>
+        <div id="location-admins-list" class="location-admins-list" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+  <footer class="admin-footer"><span>TELLABELLI VILLAGE MARKET</span><a href="/">Return to storefront ↗</a></footer>
+</body>
+</html>

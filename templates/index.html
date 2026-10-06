@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f3e9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Tellabelli Village Market">
+  <title>Tellabelli Village Market</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/market-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="topline"><span>GOOD FOOD, CLOSE TO HOME</span><span>Fresh picks, ready for your table</span></div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Root and River Market home"><span class="brand-mark">R<span>&</span>R</span><span class="brand-name">root <i>&</i> river<small>NEIGHBORHOOD MARKET</small></span></a>
+    <div class="header-actions">
+      <label class="search-box"><span aria-hidden="true">⌕</span><input id="search-input" type="search" placeholder="Find something good" aria-label="Search products"><kbd>/</kbd></label>
+      <a class="admin-link" href="/admin">Admin</a>
+      <a class="cart-jump" href="#basket" aria-label="Go to basket">Basket <span id="cart-count">0</span></a>
+    </div>
+  </header>
+  <main class="page-shell">
+    <section class="welcome-row">
+      <div><p class="eyebrow">THE MARKET, AT YOUR DOOR</p><h1>Stock up on <em>good things.</em></h1><p class="welcome-copy">Everyday produce and pantry favourites, picked with care.</p></div>
+      <div class="market-note"><span class="fresh-dot"></span><span id="connection-status">Checking today's market...</span></div>
+    </section>
+    <div class="shop-layout">
+      <section class="catalog" aria-label="Shop products">
+        <div class="catalog-heading"><div><h2 id="section-title">Shop the market</h2><p id="product-count">A little goodness for every day</p></div><span class="sort-note">PRICES IN USD</span></div>
+        <nav id="category-list" class="category-list" aria-label="Product categories"></nav>
+        <div id="catalog-view">
+          <label class="shop-location-picker">Shop availability for<select id="delivery-location" required><option value="">Choose your nearest location</option></select></label>
+          <div id="product-grid" class="product-grid" aria-live="polite"></div>
+          <div id="empty-state" class="empty-state" hidden>No products found. Try another search or category.</div>
+        </div>
+        <section id="order-status-view" class="request-view" hidden>
+          <div class="request-art"><span class="request-spark">↗</span><p class="eyebrow">YOUR ORDER, YOUR PEACE OF MIND</p><h3>Check in on your order.</h3><p>Enter the 8-character order number shown after checkout to see its latest status.</p></div>
+          <form id="order-status-form" class="request-form">
+            <label>Order number<input name="order_number" required minlength="8" maxlength="8" pattern="[a-fA-F0-9]{8}" autocomplete="off" placeholder="e.g. A1B2C3D4"></label>
+            <button class="button button-dark" type="submit">Check order status <span aria-hidden="true">↗</span></button>
+            <p id="order-status-message" class="form-message" role="status"></p>
+            <div id="order-status-result" aria-live="polite"></div>
+          </form>
+        </section>
+        <section id="request-view" class="request-view" hidden>
+          <div class="request-art"><span class="request-spark">✳</span><p class="eyebrow">A GOOD IDEA</p><h3>Missing something?</h3><p>Tell us what you’d love to see on our shelves. We read every request.</p><div class="request-stamp">YOUR<br>MARKET,<br>YOUR WAY</div></div>
+          <form id="request-form" class="request-form">
+            <label>What item are you looking for?<input name="requested_name" required minlength="2" maxlength="160" placeholder="e.g. fresh curry leaves"></label>
+            <label>Category<select id="request-category" name="category_id" required><option value="">Choose a category</option></select></label>
+            <label>Nearest location<select id="request-location" name="delivery_location_id" required><option value="">Choose your nearest location</option></select></label>
+            <label>Your name<input name="customer_name" required minlength="2" maxlength="120" placeholder="Name"></label>
+            <label>Phone number<input name="customer_phone" type="tel" required minlength="7" maxlength="40" placeholder="So we can follow up"></label>
+            <label>Delivery address<textarea name="delivery_address" required minlength="5" maxlength="500" rows="2" placeholder="Where should we reach you?"></textarea></label>
+            <label>A little more detail <span class="optional">OPTIONAL</span><textarea name="note" rows="3" maxlength="500" placeholder="Brand, size, or anything else we should know"></textarea></label>
+            <button class="button button-dark" type="submit">Send item request <span aria-hidden="true">↗</span></button>
+            <p id="request-message" class="form-message" role="status"></p>
+          </form>
+        </section>
+      </section>
+      <aside id="basket" class="basket" aria-label="Your basket">
+        <div class="basket-heading"><h2>Your basket</h2><span id="basket-count">0 ITEMS</span></div>
+        <div id="basket-empty" class="basket-empty"><span class="basket-icon">＋</span><p>Your basket is taking a little breather.</p><small>Add something fresh to get started.</small></div>
+        <div id="basket-lines" class="basket-lines"></div>
+        <div id="checkout-area" hidden>
+          <div class="basket-total"><span>Subtotal</span><strong id="basket-total">$0.00</strong></div>
+          <p id="checkout-location-note" class="delivery-note">Choose a shop location above to see local stock and place an order.</p>
+          <form id="checkout-form" class="checkout-form">
+            <label>Your name<input name="customer_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Full name"></label>
+            <label>Phone number<input name="customer_phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" placeholder="Phone number"></label>
+            <label class="sms-consent"><input name="sms_consent" type="checkbox" value="true"><span>I agree to receive an SMS order confirmation at this number. Message and data rates may apply.</span></label>
+            <label>Email <span class="optional">OPTIONAL</span><input name="customer_email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
+            <label>Delivery address<textarea name="delivery_address" required minlength="5" maxlength="500" rows="2" autocomplete="street-address" placeholder="Street, city, postal code"></textarea></label>
+            <button class="button button-order" type="submit">Place order <span id="order-button-total">$0.00</span></button>
+          </form>
+        </div>
+        <p id="order-message" class="form-message order-confirmation" role="status"></p>
+        <section class="basket-status" aria-labelledby="basket-status-title">
+          <h3 id="basket-status-title">Track an order</h3>
+          <p>Enter your 8-character order number to check its latest status.</p>
+          <form id="basket-order-status-form" class="checkout-form">
+            <label>Order number<input name="order_number" required minlength="8" maxlength="8" pattern="[a-fA-F0-9]{8}" autocomplete="off" placeholder="e.g. A1B2C3D4"></label>
+            <button class="button button-dark" type="submit">Check status</button>
+            <p id="basket-order-status-message" class="form-message" role="status"></p>
+            <div id="basket-order-status-result" aria-live="polite"></div>
+          </form>
+        </section>
+        <p class="basket-footnote">Your order is confirmed after you submit it.</p>
+      </aside>
+    </div>
+    <footer class="site-footer"><span>TELLABELLI VILLAGE MARKET</span><span>Good food belongs to everyone.</span><a href="#category-list" id="request-shortcut">Have an item in mind? Tell us ↗</a><button id="install-help-button" class="install-help-button" type="button">Add to iPhone Home Screen</button></footer>
+  </main>
+  <dialog id="install-help-dialog" class="install-help-dialog">
+    <form method="dialog"><button class="install-help-close" aria-label="Close">×</button></form>
+    <p class="eyebrow">TELLABELLI VILLAGE MARKET ON YOUR IPHONE</p>
+    <h2>Add the market to your Home Screen</h2>
+    <ol><li>Open this site in <strong>Safari</strong>.</li><li>Tap the <strong>Share</strong> button.</li><li>Choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.</li></ol>
+    <p>This works after the site is available at its public HTTPS address.</p>
+  </dialog>
+</body>
+</html>
