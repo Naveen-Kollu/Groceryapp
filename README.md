@@ -34,6 +34,20 @@ The customer storefront is an installable Progressive Web App (PWA). To use it o
 
 On the iPhone, open the deployed HTTPS URL in Safari, tap **Share**, choose **Add to Home Screen**, then tap **Add**. Open the new home-screen icon to launch it in its app-style window. The storefront includes an **Add to iPhone Home Screen** guide. Local `http://127.0.0.1:8000` works only on the computer; a URL on your Wi-Fi is not a secure public deployment and is not suitable for PWA installation.
 
+## Deploy on a free Render URL
+
+The included [`render.yaml`](render.yaml) configures a free Render web service. Render provides a temporary HTTPS address ending in `onrender.com`; you do not need to buy a domain to start. A free service may become idle and take a little while to respond to the next visit, so it is best for testing and temporary use rather than guaranteed always-on access.
+
+1. Push this project to a GitHub repository. Do not commit `.env`; it is excluded by `.gitignore`.
+2. Create a Supabase project and run [`sql/schema.sql`](sql/schema.sql) in its SQL Editor so orders and inventory persist when the web service restarts.
+3. In Render, create a **Blueprint** from that GitHub repository and deploy the `tellabelli-village-market` service defined by `render.yaml`.
+4. When prompted for environment variables, set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and a strong unique `ADMIN_PASSWORD`. Render generates and stores `SESSION_SECRET`; `COOKIE_SECURE` is enabled in the Blueprint. Keep these values private and do not put them in frontend files.
+5. After deployment, open the `onrender.com` URL shown on the Render service page. The public admin page is at `/admin`.
+
+The free web service's local filesystem and in-memory demo data are not durable. Configure Supabase before accepting real orders; Supabase stores the catalog, inventory, orders, and requests across deploys and restarts. Free hosting can also have usage limits or availability changes, so check Render's current plan terms before relying on it.
+
+When you buy a domain, add it to the Render service's **Custom Domains** settings and configure the DNS records Render provides. Render can serve the custom domain over HTTPS; the same app can then use that address without changing its routes. Visitors using the old `onrender.com` address may need to install the PWA again from the new domain.
+
 ## Admin area
 
 Copy [`.env.example`](.env.example) to `.env` and set a private `ADMIN_PASSWORD` before signing in at http://127.0.0.1:8000/admin. The sign-in page has separate **Super admin** and **Location team admin** tabs. The super admin uses the owner password; location staff use the username and password created by the owner. Set `SESSION_SECRET` to a long random value so admin sessions remain signed securely across server restarts. When serving over HTTPS, set `COOKIE_SECURE=true`.
