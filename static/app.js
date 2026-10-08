@@ -3,7 +3,7 @@ const state = {
   selectedLocation: localStorage.getItem("root-river-location") || "",
   cartLocation: localStorage.getItem("root-river-cart-location") || "",
 };
-const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const currency = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const productGrid = document.querySelector("#product-grid");
 const categoryList = document.querySelector("#category-list");
 const requestView = document.querySelector("#request-view");

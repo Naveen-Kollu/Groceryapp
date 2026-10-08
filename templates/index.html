@@ -34,7 +34,7 @@
     </section>
     <div class="shop-layout">
       <section class="catalog" aria-label="Shop products">
-        <div class="catalog-heading"><div><h2 id="section-title">Shop the market</h2><p id="product-count">A little goodness for every day</p></div><span class="sort-note">PRICES IN USD</span></div>
+        <div class="catalog-heading"><div><h2 id="section-title">Shop the market</h2><p id="product-count">A little goodness for every day</p></div><span class="sort-note">PRICES IN NOK</span></div>
         <nav id="category-list" class="category-list" aria-label="Product categories"></nav>
         <div id="catalog-view">
           <label class="shop-location-picker">Shop availability for<select id="delivery-location" required><option value="">Choose your nearest location</option></select></label>
@@ -70,7 +70,7 @@
         <div id="basket-empty" class="basket-empty"><span class="basket-icon">＋</span><p>Your basket is taking a little breather.</p><small>Add something fresh to get started.</small></div>
         <div id="basket-lines" class="basket-lines"></div>
         <div id="checkout-area" hidden>
-          <div class="basket-total"><span>Subtotal</span><strong id="basket-total">$0.00</strong></div>
+          <div class="basket-total"><span>Subtotal</span><strong id="basket-total">0,00 kr</strong></div>
           <p id="checkout-location-note" class="delivery-note">Choose a shop location above to see local stock and place an order.</p>
           <form id="checkout-form" class="checkout-form">
             <label>Your name<input name="customer_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Full name"></label>
@@ -78,7 +78,7 @@
             <label class="sms-consent"><input name="sms_consent" type="checkbox" value="true"><span>I agree to receive an SMS order confirmation at this number. Message and data rates may apply.</span></label>
             <label>Email <span class="optional">OPTIONAL</span><input name="customer_email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
             <label>Delivery address<textarea name="delivery_address" required minlength="5" maxlength="500" rows="2" autocomplete="street-address" placeholder="Street, city, postal code"></textarea></label>
-            <button class="button button-order" type="submit">Place order <span id="order-button-total">$0.00</span></button>
+            <button class="button button-order" type="submit">Place order <span id="order-button-total">0,00 kr</span></button>
           </form>
         </div>
         <p id="order-message" class="form-message order-confirmation" role="status"></p>

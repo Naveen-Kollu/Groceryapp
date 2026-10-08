@@ -230,11 +230,11 @@ def test_order_confirmation_sends_details_to_opted_in_channels(monkeypatch):
     assert response.json()["notification_warnings"] == []
     assert sent["email"][0] == "customer@example.com"
     assert order_number in sent["email"][1]
-    assert "2 x Basmati rice @ $8.50 = $17.00" in sent["email"][2]
-    assert "Total: $17.00" in sent["email"][2]
+    assert "2 x Basmati rice @ 8,50 kr = 17,00 kr" in sent["email"][2]
+    assert "Total: 17,00 kr" in sent["email"][2]
     assert sent["sms"][0] == "+4712345678"
     assert order_number in sent["sms"][1]
-    assert "2 x Basmati rice @ $8.50 = $17.00" in sent["sms"][1]
+    assert "2 x Basmati rice @ 8,50 kr = 17,00 kr" in sent["sms"][1]
 
 
 def test_order_sms_is_not_sent_without_explicit_consent(monkeypatch):

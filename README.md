@@ -1,6 +1,6 @@
 # Tellabelli Village Market
 
-A Python grocery storefront with category-based shopping, product photos and prices, stock-aware multi-item orders, and a separate customer item-request flow. Supabase stores the catalog, inventory, orders, and requests. The storefront runs in demo mode until you add Supabase credentials.
+A Python grocery storefront with category-based shopping, product photos and prices in Norwegian kroner (NOK), stock-aware multi-item orders, and a separate customer item-request flow. Supabase stores the catalog, inventory, orders, and requests. The storefront runs in demo mode until you add Supabase credentials. Prices are formatted as NOK; changing the currency display does not convert existing stored prices.
 
 ## Run locally
 

@@ -24,7 +24,7 @@ from starlette.middleware.sessions import SessionMiddleware
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Root & River Market", version="1.0.0")
+app = FastAPI(title="Tellabelli Village Market", version="1.0.0")
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET") or token_urlsafe(32),
@@ -232,8 +232,12 @@ def order_confirmation_content(
     items: list[dict[str, Any]],
     total: float,
 ) -> str:
+    def format_nok(amount: float) -> str:
+        whole, fractional = f"{amount:,.2f}".split(".")
+        return f"{whole.replace(',', '\u00a0')},{fractional} kr"
+
     lines = [
-        f"{int(item['quantity'])} x {item['product_name']} @ ${float(item['unit_price']):.2f} = ${float(item['line_total']):.2f}"
+        f"{int(item['quantity'])} x {item['product_name']} @ {format_nok(float(item['unit_price']))} = {format_nok(float(item['line_total']))}"
         for item in items
     ]
     return "\n".join([
@@ -246,7 +250,7 @@ def order_confirmation_content(
         "Items:",
         *lines,
         "",
-        f"Total: ${total:.2f}",
+        f"Total: {format_nok(total)}",
         "Status: placed",
         "",
         "Use the order number in the market's Check order status section to track your order.",

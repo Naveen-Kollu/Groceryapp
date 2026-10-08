@@ -1,6 +1,6 @@
 const loginPanel = document.querySelector("#login-panel");
 const dashboard = document.querySelector("#admin-dashboard");
-const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const currency = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const orderStatuses = ["placed", "confirmed", "packing", "out_for_delivery", "completed", "cancelled"];
 const adminState = { role: null, locations: [], locationIds: [] };
 
