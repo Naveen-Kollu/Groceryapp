@@ -237,6 +237,54 @@ def test_order_confirmation_sends_details_to_opted_in_channels(monkeypatch):
     assert "2 x Basmati rice @ 8,50 kr = 17,00 kr" in sent["sms"][1]
 
 
+def test_brevo_email_uses_https_api_with_verified_sender(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        status = 201
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["method"] = request.get_method()
+        captured["headers"] = {key.casefold(): value for key, value in request.headers.items()}
+        captured["payload"] = json.loads(request.data)
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setenv("EMAIL_PROVIDER", "brevo")
+    monkeypatch.setenv("BREVO_API_KEY", "test-api-key")
+    monkeypatch.setenv("SMTP_FROM_EMAIL", "verified@example.com")
+    monkeypatch.setattr(app_module, "urlopen", fake_urlopen)
+
+    app_module.send_order_email("customer@example.com", "Order confirmation", "Your order is confirmed.")
+
+    assert captured["url"] == "https://api.brevo.com/v3/smtp/email"
+    assert captured["method"] == "POST"
+    assert captured["headers"]["api-key"] == "test-api-key"
+    assert captured["payload"] == {
+        "sender": {"email": "verified@example.com"},
+        "to": [{"email": "customer@example.com"}],
+        "subject": "Order confirmation",
+        "textContent": "Your order is confirmed.",
+    }
+    assert captured["timeout"] == 8
+
+
+def test_brevo_email_requires_api_key_and_sender(monkeypatch):
+    monkeypatch.setenv("EMAIL_PROVIDER", "brevo")
+    monkeypatch.delenv("BREVO_API_KEY", raising=False)
+    monkeypatch.delenv("SMTP_FROM_EMAIL", raising=False)
+
+    with pytest.raises(RuntimeError, match="BREVO_API_KEY and SMTP_FROM_EMAIL"):
+        app_module.send_order_email("customer@example.com", "Order confirmation", "Body")
+
+
 def test_order_sms_is_not_sent_without_explicit_consent(monkeypatch):
     monkeypatch.setattr(
         app_module,

@@ -1,6 +1,7 @@
 import os
 import base64
 import hashlib
+import json
 import logging
 import smtplib
 import ssl
@@ -179,8 +180,37 @@ def normalize_order_items(items: list[OrderItem]) -> list[dict[str, Any]]:
 
 
 def send_order_email(recipient: str, subject: str, body: str) -> None:
-    host = os.getenv("SMTP_HOST")
+    provider = os.getenv("EMAIL_PROVIDER", "smtp").strip().casefold()
     sender = os.getenv("SMTP_FROM_EMAIL")
+    if provider == "brevo":
+        api_key = os.getenv("BREVO_API_KEY")
+        if not api_key or not sender:
+            raise RuntimeError("BREVO_API_KEY and SMTP_FROM_EMAIL must be configured for Brevo.")
+
+        request = UrlRequest(
+            "https://api.brevo.com/v3/smtp/email",
+            data=json.dumps({
+                "sender": {"email": sender},
+                "to": [{"email": recipient}],
+                "subject": subject,
+                "textContent": body,
+            }).encode(),
+            headers={
+                "api-key": api_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        with urlopen(request, timeout=8) as response:
+            if response.status < 200 or response.status >= 300:
+                raise RuntimeError(f"Brevo returned HTTP {response.status}.")
+        return
+
+    if provider != "smtp":
+        raise RuntimeError("EMAIL_PROVIDER must be set to 'smtp' or 'brevo'.")
+
+    host = os.getenv("SMTP_HOST")
     if not host or not sender:
         raise RuntimeError("SMTP_HOST and SMTP_FROM_EMAIL must be configured.")
 

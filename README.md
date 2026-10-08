@@ -63,9 +63,16 @@ The owner admin can review all customer orders and item requests, update product
 
 Keep the service-role key and owner admin password only in this backend `.env`. Never put them in browser JavaScript or commit `.env` to source control. Location-team users are created and assigned by the owner in the admin portal; use unique strong passwords. The supplied SQL allows public reads of categories and available products; all writes run through the Python backend.
 
-For a free real-inbox email test, use a separate Gmail test account. Enable 2-Step Verification and create a Google App Password at [Google App Passwords](https://myaccount.google.com/apppasswords). Put the Gmail address in `SMTP_USERNAME` and `SMTP_FROM_EMAIL`, the App Password in `SMTP_PASSWORD`, and set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, and `SMTP_USE_SSL=false` in `.env`. Do not use your regular Google password. Google notes that App Passwords are less secure and revokes them if you change your Google password, so this is best for local testing rather than a production sender. Some Google accounts do not offer App Passwords.
+For a free real-inbox email test locally, use a separate Gmail test account. Enable 2-Step Verification and create a Google App Password at [Google App Passwords](https://myaccount.google.com/apppasswords). Put the Gmail address in `SMTP_USERNAME` and `SMTP_FROM_EMAIL`, the App Password in `SMTP_PASSWORD`, and set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, and `SMTP_USE_SSL=false` in `.env`. Do not use your regular Google password. Google notes that App Passwords are less secure and revokes them if you change your Google password, so this is best for local testing rather than a production sender. Some Google accounts do not offer App Passwords.
 
-Alternatively, configure another SMTP provider in `.env` using `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM_EMAIL` (STARTTLS is used by default; set `SMTP_USE_SSL=true` for implicit TLS). To send SMS, configure `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. Keep provider credentials private. Customers must tick the SMS consent checkbox; consent is stored with the order. Restart the server after changing `.env`. The API reports notification delivery failures separately; they do not undo a saved order.
+Render Free blocks outbound SMTP on ports 25, 465, and 587. To send order emails from Render Free, use Brevo's HTTPS API instead:
+
+1. Create a Brevo account and verify the sender email address you want to use in Brevo. Follow Brevo's current sender/domain verification requirements.
+2. Create a Brevo API key.
+3. In Render, open the service's **Environment** settings and add `EMAIL_PROVIDER=brevo`, `BREVO_API_KEY` (the API key), and `SMTP_FROM_EMAIL` (the verified sender address). Do not add the API key to frontend code or commit it to `.env`.
+4. Save the variables and redeploy/restart the service. Place an order with a customer email address and check the order response and Render logs if delivery fails.
+
+The Brevo integration sends the plain-text confirmation through HTTPS on port 443. Keep `EMAIL_PROVIDER=smtp` for local Gmail SMTP, or configure another SMTP provider locally. To send SMS, configure `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. Keep provider credentials private. Customers must tick the SMS consent checkbox; consent is stored with the order. Restart the server after changing `.env`. The API reports notification delivery failures separately; they do not undo a saved order.
 
 ## Catalog and orders
 
