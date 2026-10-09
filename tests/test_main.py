@@ -18,6 +18,8 @@ def test_progressive_web_app_files_are_served():
     assert manifest_response.status_code == 200
     assert manifest_response.headers["content-type"].startswith("application/manifest+json")
     manifest = json.loads(manifest_response.text)
+    assert manifest["name"] == "Food & Snacks - Neighborhood Food Court"
+    assert manifest["short_name"] == "Food & Snacks"
     assert manifest["display"] == "standalone"
     assert manifest["start_url"] == "/"
     assert {icon["sizes"] for icon in manifest["icons"]} == {"192x192", "512x512"}
@@ -28,6 +30,7 @@ def test_progressive_web_app_files_are_served():
     assert icon_response.headers["content-type"] == "image/png"
     page = client.get("/").content
     assert b"apple-mobile-web-app-capable" in page
+    assert b"<title>Food &amp; Snacks" in page
     assert b"Food <i>&</i> Snacks<small>NEIGHBORHOOD FOOD COURT</small>" in page
 
 

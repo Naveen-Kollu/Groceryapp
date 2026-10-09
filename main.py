@@ -26,7 +26,7 @@ from starlette.middleware.sessions import SessionMiddleware
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Tellabelli Village Market", version="1.0.0")
+app = FastAPI(title="Food & Snacks - Neighborhood Food Court", version="1.0.0")
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET") or token_urlsafe(32),
