@@ -112,7 +112,7 @@ function renderItemRequests(requests) {
 
 function renderProducts(products) {
   document.querySelector("#products-list").innerHTML = products.map(product => `<tr>
-    <td data-label="Product"><div class="product-admin-details"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.unit || "each")}</small>${product.image_url ? `<img class="product-admin-image" src="${escapeHtml(product.image_url)}" alt="" loading="lazy">` : ""}<label class="sr-only" for="image-${escapeHtml(product.id)}">${escapeHtml(product.name)} image URL</label><input id="image-${escapeHtml(product.id)}" class="product-image-input" type="url" maxlength="2048" value="${escapeHtml(product.image_url || "")}" placeholder="https://..."><button class="save-price-button" type="button" data-save-image="${escapeHtml(product.id)}">Save image</button></div></td>
+    <td data-label="Product"><div class="product-admin-details"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.unit || "each")}</small>${product.image_url ? `<img class="product-admin-image" src="${escapeHtml(product.image_url)}" alt="" loading="lazy">` : ""}<label class="sr-only" for="image-${escapeHtml(product.id)}">${escapeHtml(product.name)} image URL</label><input id="image-${escapeHtml(product.id)}" class="product-image-input" type="url" maxlength="2048" value="${escapeHtml(product.image_url || "")}" placeholder="https://..."><button class="save-price-button" type="button" data-save-image="${escapeHtml(product.id)}">Save image</button><label for="description-${escapeHtml(product.id)}">${escapeHtml(product.name)} customer text</label><textarea id="description-${escapeHtml(product.id)}" class="product-description-input" maxlength="1000">${escapeHtml(product.description || "")}</textarea><button class="save-price-button" type="button" data-save-description="${escapeHtml(product.id)}">Save text</button></div></td>
     <td data-label="Category">${escapeHtml(product.category_name)}</td>
     <td data-label="Price"><label class="sr-only" for="price-${escapeHtml(product.id)}">${escapeHtml(product.name)} price</label><input id="price-${escapeHtml(product.id)}" class="price-input" type="number" min="0.01" max="99999999.99" step="0.01" required value="${Number(product.price).toFixed(2)}"></td>
     <td data-label="Save"><button class="save-price-button" type="button" data-save-price="${escapeHtml(product.id)}">Save</button></td>
@@ -121,12 +121,34 @@ function renderProducts(products) {
   </tr>`).join("");
   document.querySelectorAll("[data-save-price]").forEach(button => button.addEventListener("click", () => savePrice(button.dataset.savePrice, button)));
   document.querySelectorAll("[data-save-image]").forEach(button => button.addEventListener("click", () => saveProductImage(button)));
+  document.querySelectorAll("[data-save-description]").forEach(button =>
+    button.addEventListener("click", () => saveProductDescription(button))
+  );
   document.querySelectorAll("[data-toggle-availability]").forEach(button =>
     button.addEventListener("click", () => saveProductAvailability(button))
   );
   document.querySelectorAll("[data-delete-product]").forEach(button =>
     button.addEventListener("click", () => deleteProduct(button))
   );
+}
+
+async function saveProductDescription(button) {
+  const input = document.querySelector(`#description-${CSS.escape(button.dataset.saveDescription)}`);
+  button.disabled = true;
+  showMessage("#price-message", "Saving customer-facing product text...");
+  try {
+    await apiRequest(`/api/admin/products/${encodeURIComponent(button.dataset.saveDescription)}/description`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: input.value }),
+    });
+    showMessage("#price-message", "Customer-facing product text updated.");
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#price-message", error.message, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function saveProductImage(button) {

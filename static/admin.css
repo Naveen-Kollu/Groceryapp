@@ -46,6 +46,8 @@
 .product-admin-details small { color: var(--muted); font-size: 9px; }
 .product-admin-image { width: 52px; height: 42px; border: 1px solid var(--line); object-fit: cover; }
 .product-image-input { width: min(230px, 100%); min-height: 30px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 2px; font-size: 10px; }
+.product-admin-details > label:not(.sr-only) { color: #617064; font-size: 9px; font-weight: 700; }
+.product-description-input { width: min(230px, 100%); min-height: 65px; padding: 6px 7px; border: 1px solid var(--line); border-radius: 2px; font: inherit; font-size: 10px; resize: vertical; }
 .order-update-message { margin: 8px 0 0; font-size: 10px; }
 .order-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, .8fr); gap: 18px; padding: 12px 0; }
 .order-customer h3 { margin: 0 0 6px; font-size: 12px; }

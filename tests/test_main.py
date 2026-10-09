@@ -176,6 +176,51 @@ def test_super_admin_can_update_and_clear_product_image(monkeypatch):
         ).json()["image_url"] == ""
 
 
+def test_super_admin_can_update_product_text_shown_read_only_in_customer_catalog(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(app_module, "DEMO_PRODUCTS", [dict(product) for product in app_module.DEMO_PRODUCTS])
+
+    with TestClient(app, base_url="https://testserver") as admin_client:
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/description",
+            json={"description": "A customer-facing note"},
+        ).status_code == 401
+        assert admin_client.post(
+            "/api/admin/login",
+            json={"password": "test-admin-password"},
+        ).status_code == 200
+
+        updated = admin_client.patch(
+            "/api/admin/products/demo-rice/description",
+            json={"description": "  A customer-facing note  "},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["description"] == "A customer-facing note"
+        admin_product = next(
+            product for product in admin_client.get("/api/admin/products").json()["products"]
+            if product["id"] == "demo-rice"
+        )
+        assert admin_product["description"] == "A customer-facing note"
+        catalog_product = next(
+            product for product in admin_client.get("/api/catalog").json()["products"]
+            if product["id"] == "demo-rice"
+        )
+        assert catalog_product["description"] == "A customer-facing note"
+        customer_script = admin_client.get("/static/app.js").text
+        assert 'class="product-image-caption"' in customer_script
+        assert 'class="product-description-input"' not in customer_script
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/description",
+            json={"description": "x" * 1001},
+        ).status_code == 422
+        assert admin_client.patch(
+            "/api/admin/products/missing/description",
+            json={"description": "No product"},
+        ).status_code == 404
+
+
 def test_super_admin_can_delete_product_and_preserves_past_order(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)

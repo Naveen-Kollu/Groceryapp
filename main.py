@@ -143,6 +143,10 @@ class ProductImageUpdate(BaseModel):
         return value
 
 
+class ProductDescriptionUpdate(BaseModel):
+    description: str = Field(default="", max_length=1000)
+
+
 class ProductCreate(BaseModel):
     category_id: str = Field(min_length=1, max_length=60)
     name: str = Field(min_length=2, max_length=160)
@@ -796,7 +800,7 @@ def get_admin_products(request: Request):
         return {"products": products, "categories": CATEGORIES, "mode": "demo"}
     try:
         products = client.table("products").select(
-            "id,category_id,name,price,unit,image_url,stock_quantity,is_available"
+            "id,category_id,name,description,price,unit,image_url,stock_quantity,is_available"
         ).order("category_id").order("name").execute().data
         inventory_query = client.table("product_location_inventory").select(
             "product_id,location_id,stock_quantity"
@@ -923,6 +927,33 @@ def update_product_image(product_id: str, update: ProductImageUpdate):
         raise
     except Exception as exc:
         raise HTTPException(status_code=503, detail="The product image could not be updated.") from exc
+
+
+@app.patch("/api/admin/products/{product_id}/description", dependencies=[Depends(require_owner)])
+def update_product_description(product_id: str, update: ProductDescriptionUpdate):
+    description = update.description.strip()
+    client = supabase_client()
+    if client is None:
+        product = next((item for item in DEMO_PRODUCTS if item["id"] == product_id), None)
+        if product is None:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        product["description"] = description
+        return {"product_id": product_id, "description": description, "mode": "demo"}
+    try:
+        result = client.table("products").update(
+            {"description": description}
+        ).eq("id", product_id).select("id,description").execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        return {
+            "product_id": product_id,
+            "description": result.data[0]["description"],
+            "mode": "supabase",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="The product text could not be updated.") from exc
 
 
 @app.patch("/api/admin/products/{product_id}/availability", dependencies=[Depends(require_owner)])
