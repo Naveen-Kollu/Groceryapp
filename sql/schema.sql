@@ -79,7 +79,7 @@ create table if not exists public.market_admin_user_locations (
 create table if not exists public.order_items (
     id uuid primary key default gen_random_uuid(),
     order_id uuid not null references public.customer_orders(id) on delete cascade,
-    product_id uuid references public.products(id) on delete set null,
+    product_id uuid not null references public.products(id) on delete restrict,
     product_name text not null,
     quantity integer not null check (quantity > 0),
     unit_price numeric(12, 2) not null check (unit_price >= 0),
@@ -87,12 +87,10 @@ create table if not exists public.order_items (
 );
 
 alter table public.order_items
-    alter column product_id drop not null;
-alter table public.order_items
     drop constraint if exists order_items_product_id_fkey;
 alter table public.order_items
     add constraint order_items_product_id_fkey
-    foreign key (product_id) references public.products(id) on delete set null;
+    foreign key (product_id) references public.products(id) on delete restrict;
 
 create table if not exists public.customer_item_requests (
     id uuid primary key default gen_random_uuid(),
