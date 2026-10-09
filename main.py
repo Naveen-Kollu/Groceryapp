@@ -915,6 +915,38 @@ def update_product_availability(product_id: str, update: ProductAvailabilityUpda
         raise HTTPException(status_code=503, detail="The product availability could not be updated.") from exc
 
 
+@app.delete("/api/admin/products/{product_id}", dependencies=[Depends(require_owner)])
+def delete_product(product_id: str):
+    client = supabase_client()
+    if client is None:
+        product_index = next(
+            (index for index, product in enumerate(DEMO_PRODUCTS) if product["id"] == product_id),
+            None,
+        )
+        if product_index is None:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        DEMO_PRODUCTS.pop(product_index)
+        DEMO_LOCATION_STOCK.pop(product_id, None)
+        for order in DEMO_ORDERS:
+            for item in order.get("order_items", []):
+                if item.get("product_id") == product_id:
+                    item["product_id"] = None
+        return {"product_id": product_id, "mode": "demo"}
+
+    try:
+        result = client.table("products").delete().eq("id", product_id).select("id").execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        return {"product_id": product_id, "mode": "supabase"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The product could not be deleted. Run the latest sql/schema.sql and try again.",
+        ) from exc
+
+
 @app.patch("/api/admin/products/{product_id}/stock/{location_id}", dependencies=[Depends(require_admin)])
 def update_product_stock(product_id: str, location_id: str, update: StockQuantityUpdate, request: Request):
     role = request.session.get("admin_role", "owner")

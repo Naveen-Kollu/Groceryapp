@@ -117,11 +117,33 @@ function renderProducts(products) {
     <td data-label="Price"><label class="sr-only" for="price-${escapeHtml(product.id)}">${escapeHtml(product.name)} price</label><input id="price-${escapeHtml(product.id)}" class="price-input" type="number" min="0.01" max="99999999.99" step="0.01" required value="${Number(product.price).toFixed(2)}"></td>
     <td data-label="Save"><button class="save-price-button" type="button" data-save-price="${escapeHtml(product.id)}">Save</button></td>
     <td data-label="Customer ordering"><span class="product-availability ${product.is_available ? "is-available" : "is-hidden"}">${product.is_available ? "Available" : "Hidden"}</span><button class="save-price-button" type="button" data-toggle-availability="${escapeHtml(product.id)}" data-next-availability="${!product.is_available}">${product.is_available ? "Disable" : "Enable"}</button></td>
+    <td data-label="Delete"><button class="delete-product-button" type="button" data-delete-product="${escapeHtml(product.id)}" data-product-name="${escapeHtml(product.name)}">Delete</button></td>
   </tr>`).join("");
   document.querySelectorAll("[data-save-price]").forEach(button => button.addEventListener("click", () => savePrice(button.dataset.savePrice, button)));
   document.querySelectorAll("[data-toggle-availability]").forEach(button =>
     button.addEventListener("click", () => saveProductAvailability(button))
   );
+  document.querySelectorAll("[data-delete-product]").forEach(button =>
+    button.addEventListener("click", () => deleteProduct(button))
+  );
+}
+
+async function deleteProduct(button) {
+  const productName = button.dataset.productName;
+  if (!window.confirm(`Permanently delete "${productName}" from the catalog? Past order records will be retained.`)) return;
+
+  button.disabled = true;
+  try {
+    await apiRequest(`/api/admin/products/${encodeURIComponent(button.dataset.deleteProduct)}`, {
+      method: "DELETE",
+    });
+    showMessage("#price-message", `Deleted "${productName}". Past order records are preserved.`);
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#price-message", error.message, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function saveProductAvailability(button) {
