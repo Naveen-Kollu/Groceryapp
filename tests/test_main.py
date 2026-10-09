@@ -78,6 +78,68 @@ def test_demo_catalog_has_categories_and_products(monkeypatch):
     assert client.get("/api/catalog?location_id=unknown").status_code == 422
 
 
+def test_super_admin_controls_product_customer_availability(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(app_module, "DEMO_PRODUCTS", [dict(product) for product in app_module.DEMO_PRODUCTS])
+    monkeypatch.setattr(app_module, "DEMO_ORDERS", [])
+    monkeypatch.setattr(app_module, "DEMO_LOCATION_STOCK", {
+        product_id: dict(stocks) for product_id, stocks in app_module.DEMO_LOCATION_STOCK.items()
+    })
+
+    with TestClient(app, base_url="https://testserver") as admin_client:
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/availability",
+            json={"is_available": False},
+        ).status_code == 401
+        assert admin_client.post(
+            "/api/admin/login",
+            json={"password": "test-admin-password"},
+        ).status_code == 200
+        rice_admin = next(
+            product for product in admin_client.get("/api/admin/products").json()["products"]
+            if product["id"] == "demo-rice"
+        )
+        assert rice_admin["is_available"] is True
+
+        disabled = admin_client.patch(
+            "/api/admin/products/demo-rice/availability",
+            json={"is_available": False},
+        )
+        assert disabled.status_code == 200
+        assert disabled.json()["is_available"] is False
+        assert all(
+            product["id"] != "demo-rice"
+            for product in admin_client.get("/api/catalog?location_id=solli").json()["products"]
+        )
+        unavailable_order = admin_client.post("/api/orders", json={
+            "customer_name": "A Customer",
+            "customer_phone": "1234567890",
+            "delivery_address": "1 Main Street",
+            "delivery_location_id": "solli",
+            "items": [{"product_id": "demo-rice", "quantity": 1}],
+        })
+        assert unavailable_order.status_code == 409
+        assert app_module.DEMO_LOCATION_STOCK["demo-rice"]["solli"] == 10
+        assert app_module.DEMO_ORDERS == []
+
+        enabled = admin_client.patch(
+            "/api/admin/products/demo-rice/availability",
+            json={"is_available": True},
+        )
+        assert enabled.status_code == 200
+        assert enabled.json()["is_available"] is True
+        assert any(
+            product["id"] == "demo-rice"
+            for product in admin_client.get("/api/catalog?location_id=solli").json()["products"]
+        )
+        assert admin_client.patch(
+            "/api/admin/products/missing/availability",
+            json={"is_available": False},
+        ).status_code == 404
+
+
 def test_catalog_database_error_is_logged_and_actionable(monkeypatch, caplog):
     class FailingQuery:
         def table(self, _name):
@@ -601,6 +663,10 @@ def test_owner_can_create_and_assign_location_admin(monkeypatch):
         assert staff_products.status_code == 200
         rice = next(product for product in staff_products.json()["products"] if product["id"] == "demo-rice")
         assert set(rice["location_inventory"]) == {"solli"}
+        assert staff_client.patch(
+            "/api/admin/products/demo-rice/availability",
+            json={"is_available": False},
+        ).status_code == 403
         assert staff_client.post("/api/admin/products", json={
             "category_id": "fruits",
             "name": "Staff-created fruit",

@@ -116,8 +116,29 @@ function renderProducts(products) {
     <td data-label="Category">${escapeHtml(product.category_name)}</td>
     <td data-label="Price"><label class="sr-only" for="price-${escapeHtml(product.id)}">${escapeHtml(product.name)} price</label><input id="price-${escapeHtml(product.id)}" class="price-input" type="number" min="0.01" max="99999999.99" step="0.01" required value="${Number(product.price).toFixed(2)}"></td>
     <td data-label="Save"><button class="save-price-button" type="button" data-save-price="${escapeHtml(product.id)}">Save</button></td>
+    <td data-label="Customer ordering"><span class="product-availability ${product.is_available ? "is-available" : "is-hidden"}">${product.is_available ? "Available" : "Hidden"}</span><button class="save-price-button" type="button" data-toggle-availability="${escapeHtml(product.id)}" data-next-availability="${!product.is_available}">${product.is_available ? "Disable" : "Enable"}</button></td>
   </tr>`).join("");
   document.querySelectorAll("[data-save-price]").forEach(button => button.addEventListener("click", () => savePrice(button.dataset.savePrice, button)));
+  document.querySelectorAll("[data-toggle-availability]").forEach(button =>
+    button.addEventListener("click", () => saveProductAvailability(button))
+  );
+}
+
+async function saveProductAvailability(button) {
+  button.disabled = true;
+  try {
+    await apiRequest(`/api/admin/products/${encodeURIComponent(button.dataset.toggleAvailability)}/availability`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_available: button.dataset.nextAvailability === "true" }),
+    });
+    showMessage("#price-message", "Customer ordering availability updated.");
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#price-message", error.message, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function renderInventory(products) {

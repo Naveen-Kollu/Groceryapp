@@ -78,7 +78,7 @@
         <div id="item-requests-list" class="item-requests-list" aria-live="polite"></div>
       </section>
       <section id="owner-prices-section" class="admin-section" aria-labelledby="prices-title">
-        <div class="admin-section-heading"><div><h2 id="prices-title">Product prices</h2><p>Price changes apply to new orders. Past orders keep their original price.</p></div></div>
+        <div class="admin-section-heading"><div><h2 id="prices-title">Product management</h2><p>Set prices for new orders and control whether each item appears in the customer catalog.</p></div></div>
         <form id="product-create-form" class="product-create-form">
           <h3>Add a product</h3>
           <label>Product name<input name="name" required minlength="2" maxlength="160" placeholder="Product name"></label>
@@ -91,7 +91,7 @@
           <button class="button button-dark" type="submit">Add product</button>
           <p id="product-create-message" class="form-message" role="status"></p>
         </form>
-        <div class="price-table-wrap"><table class="price-table"><thead><tr><th>Product</th><th>Category</th><th>Price (NOK)</th><th><span class="sr-only">Save price</span></th></tr></thead><tbody id="products-list"></tbody></table></div>
+        <div class="price-table-wrap"><table class="price-table"><thead><tr><th>Product</th><th>Category</th><th>Price (NOK)</th><th><span class="sr-only">Save price</span></th><th>Customer ordering</th></tr></thead><tbody id="products-list"></tbody></table></div>
         <p id="price-message" class="form-message" role="status"></p>
       </section>
       <section id="inventory-section" class="admin-section" aria-labelledby="inventory-title">

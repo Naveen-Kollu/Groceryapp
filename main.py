@@ -125,6 +125,10 @@ class PriceUpdate(BaseModel):
     price: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
 
 
+class ProductAvailabilityUpdate(BaseModel):
+    is_available: bool
+
+
 class ProductCreate(BaseModel):
     category_id: str = Field(min_length=1, max_length=60)
     name: str = Field(min_length=2, max_length=160)
@@ -767,6 +771,7 @@ def get_admin_products(request: Request):
             {
                 **product,
                 "category_name": category_names.get(product["category_id"], ""),
+                "is_available": product.get("is_available", True),
                 "location_inventory": {
                     location["id"]: DEMO_LOCATION_STOCK.get(product["id"], {}).get(location["id"], 0)
                     for location in allowed_locations
@@ -880,6 +885,36 @@ def update_product_price(product_id: str, update: PriceUpdate):
         raise HTTPException(status_code=503, detail="The product price could not be updated.") from exc
 
 
+@app.patch("/api/admin/products/{product_id}/availability", dependencies=[Depends(require_owner)])
+def update_product_availability(product_id: str, update: ProductAvailabilityUpdate):
+    client = supabase_client()
+    if client is None:
+        product = next((item for item in DEMO_PRODUCTS if item["id"] == product_id), None)
+        if product is None:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        product["is_available"] = update.is_available
+        return {
+            "product_id": product_id,
+            "is_available": product["is_available"],
+            "mode": "demo",
+        }
+    try:
+        result = client.table("products").update(
+            {"is_available": update.is_available}
+        ).eq("id", product_id).select("id,is_available").execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        return {
+            "product_id": product_id,
+            "is_available": result.data[0]["is_available"],
+            "mode": "supabase",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="The product availability could not be updated.") from exc
+
+
 @app.patch("/api/admin/products/{product_id}/stock/{location_id}", dependencies=[Depends(require_admin)])
 def update_product_stock(product_id: str, location_id: str, update: StockQuantityUpdate, request: Request):
     role = request.session.get("admin_role", "owner")
@@ -923,7 +958,10 @@ def get_catalog(
     client = supabase_client()
     if client is None:
         categories = CATEGORIES
-        products = [dict(product) for product in DEMO_PRODUCTS]
+        products = [
+            dict(product) for product in DEMO_PRODUCTS
+            if product.get("is_available", True)
+        ]
         inventory = [
             {"product_id": product["id"], "location_id": location["id"],
              "stock_quantity": DEMO_LOCATION_STOCK.get(product["id"], {}).get(location["id"], 0)}
@@ -983,7 +1021,7 @@ def create_order(order: OrderRequest):
         for item in items:
             product = products.get(item["product_id"])
             stock = DEMO_LOCATION_STOCK.get(item["product_id"], {}).get(location["id"], 0)
-            if product is None or stock < item["quantity"]:
+            if product is None or not product.get("is_available", True) or stock < item["quantity"]:
                 raise HTTPException(status_code=409, detail="A requested item is unavailable or out of stock.")
             unit_price = float(product["price"])
             order_lines.append({
