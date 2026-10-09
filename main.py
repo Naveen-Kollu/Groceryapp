@@ -11,7 +11,7 @@ from email.message import EmailMessage
 from secrets import compare_digest, token_urlsafe
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request as UrlRequest, urlopen
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -127,6 +127,20 @@ class PriceUpdate(BaseModel):
 
 class ProductAvailabilityUpdate(BaseModel):
     is_available: bool
+
+
+class ProductImageUpdate(BaseModel):
+    image_url: str = Field(default="", max_length=2048)
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str) -> str:
+        value = value.strip()
+        if value:
+            parsed = urlsplit(value)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("Enter a valid HTTP or HTTPS image URL.")
+        return value
 
 
 class ProductCreate(BaseModel):
@@ -782,7 +796,7 @@ def get_admin_products(request: Request):
         return {"products": products, "categories": CATEGORIES, "mode": "demo"}
     try:
         products = client.table("products").select(
-            "id,category_id,name,price,unit,stock_quantity,is_available"
+            "id,category_id,name,price,unit,image_url,stock_quantity,is_available"
         ).order("category_id").order("name").execute().data
         inventory_query = client.table("product_location_inventory").select(
             "product_id,location_id,stock_quantity"
@@ -885,6 +899,32 @@ def update_product_price(product_id: str, update: PriceUpdate):
         raise HTTPException(status_code=503, detail="The product price could not be updated.") from exc
 
 
+@app.patch("/api/admin/products/{product_id}/image", dependencies=[Depends(require_owner)])
+def update_product_image(product_id: str, update: ProductImageUpdate):
+    client = supabase_client()
+    if client is None:
+        product = next((item for item in DEMO_PRODUCTS if item["id"] == product_id), None)
+        if product is None:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        product["image_url"] = update.image_url
+        return {"product_id": product_id, "image_url": product["image_url"], "mode": "demo"}
+    try:
+        result = client.table("products").update(
+            {"image_url": update.image_url}
+        ).eq("id", product_id).select("id,image_url").execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        return {
+            "product_id": product_id,
+            "image_url": result.data[0]["image_url"],
+            "mode": "supabase",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="The product image could not be updated.") from exc
+
+
 @app.patch("/api/admin/products/{product_id}/availability", dependencies=[Depends(require_owner)])
 def update_product_availability(product_id: str, update: ProductAvailabilityUpdate):
     client = supabase_client()
@@ -913,6 +953,41 @@ def update_product_availability(product_id: str, update: ProductAvailabilityUpda
         raise
     except Exception as exc:
         raise HTTPException(status_code=503, detail="The product availability could not be updated.") from exc
+
+
+@app.delete("/api/admin/products/{product_id}", dependencies=[Depends(require_owner)])
+def delete_product(product_id: str):
+    client = supabase_client()
+    if client is None:
+        product_index = next(
+            (index for index, product in enumerate(DEMO_PRODUCTS) if product["id"] == product_id),
+            None,
+        )
+        if product_index is None:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        DEMO_PRODUCTS.pop(product_index)
+        DEMO_LOCATION_STOCK.pop(product_id, None)
+        for order in DEMO_ORDERS:
+            for item in order.get("order_items", []):
+                if item.get("product_id") == product_id:
+                    item["product_id"] = None
+        return {"product_id": product_id, "mode": "demo"}
+
+    try:
+        result = client.table("products").delete().eq("id", product_id).select("id").execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        return {"product_id": product_id, "mode": "supabase"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_text = str(exc).casefold()
+        if "foreign key" in error_text or "23503" in error_text:
+            raise HTTPException(
+                status_code=503,
+                detail="Run the latest sql/schema.sql before deleting products so past order details are preserved.",
+            ) from exc
+        raise HTTPException(status_code=503, detail="The product could not be deleted.") from exc
 
 
 @app.patch("/api/admin/products/{product_id}/stock/{location_id}", dependencies=[Depends(require_admin)])

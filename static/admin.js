@@ -112,16 +112,58 @@ function renderItemRequests(requests) {
 
 function renderProducts(products) {
   document.querySelector("#products-list").innerHTML = products.map(product => `<tr>
-    <td data-label="Product"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.unit || "each")}</small></td>
+    <td data-label="Product"><div class="product-admin-details"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.unit || "each")}</small>${product.image_url ? `<img class="product-admin-image" src="${escapeHtml(product.image_url)}" alt="" loading="lazy">` : ""}<label class="sr-only" for="image-${escapeHtml(product.id)}">${escapeHtml(product.name)} image URL</label><input id="image-${escapeHtml(product.id)}" class="product-image-input" type="url" maxlength="2048" value="${escapeHtml(product.image_url || "")}" placeholder="https://..."><button class="save-price-button" type="button" data-save-image="${escapeHtml(product.id)}">Save image</button></div></td>
     <td data-label="Category">${escapeHtml(product.category_name)}</td>
     <td data-label="Price"><label class="sr-only" for="price-${escapeHtml(product.id)}">${escapeHtml(product.name)} price</label><input id="price-${escapeHtml(product.id)}" class="price-input" type="number" min="0.01" max="99999999.99" step="0.01" required value="${Number(product.price).toFixed(2)}"></td>
     <td data-label="Save"><button class="save-price-button" type="button" data-save-price="${escapeHtml(product.id)}">Save</button></td>
     <td data-label="Customer ordering"><span class="product-availability ${product.is_available ? "is-available" : "is-hidden"}">${product.is_available ? "Available" : "Hidden"}</span><button class="save-price-button" type="button" data-toggle-availability="${escapeHtml(product.id)}" data-next-availability="${!product.is_available}">${product.is_available ? "Disable" : "Enable"}</button></td>
+    <td data-label="Delete"><button class="delete-product-button" type="button" data-delete-product="${escapeHtml(product.id)}" data-product-name="${escapeHtml(product.name)}">Delete</button></td>
   </tr>`).join("");
   document.querySelectorAll("[data-save-price]").forEach(button => button.addEventListener("click", () => savePrice(button.dataset.savePrice, button)));
+  document.querySelectorAll("[data-save-image]").forEach(button => button.addEventListener("click", () => saveProductImage(button)));
   document.querySelectorAll("[data-toggle-availability]").forEach(button =>
     button.addEventListener("click", () => saveProductAvailability(button))
   );
+  document.querySelectorAll("[data-delete-product]").forEach(button =>
+    button.addEventListener("click", () => deleteProduct(button))
+  );
+}
+
+async function saveProductImage(button) {
+  const input = document.querySelector(`#image-${CSS.escape(button.dataset.saveImage)}`);
+  if (!input.reportValidity()) return;
+  button.disabled = true;
+  showMessage("#price-message", "Saving product image...");
+  try {
+    await apiRequest(`/api/admin/products/${encodeURIComponent(button.dataset.saveImage)}/image`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_url: input.value.trim() }),
+    });
+    showMessage("#price-message", "Product image updated.");
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#price-message", error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteProduct(button) {
+  const productName = button.dataset.productName;
+  if (!window.confirm(`Permanently delete "${productName}" from the catalog? Past order records will be retained.`)) return;
+  button.disabled = true;
+  try {
+    await apiRequest(`/api/admin/products/${encodeURIComponent(button.dataset.deleteProduct)}`, {
+      method: "DELETE",
+    });
+    showMessage("#price-message", `Deleted "${productName}". Past order records are preserved.`);
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#price-message", error.message, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function saveProductAvailability(button) {

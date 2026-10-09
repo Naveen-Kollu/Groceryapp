@@ -140,6 +140,90 @@ def test_super_admin_controls_product_customer_availability(monkeypatch):
         ).status_code == 404
 
 
+def test_super_admin_can_update_and_clear_product_image(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(app_module, "DEMO_PRODUCTS", [dict(product) for product in app_module.DEMO_PRODUCTS])
+
+    with TestClient(app, base_url="https://testserver") as admin_client:
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/image",
+            json={"image_url": "https://example.com/rice.jpg"},
+        ).status_code == 401
+        assert admin_client.post(
+            "/api/admin/login",
+            json={"password": "test-admin-password"},
+        ).status_code == 200
+
+        updated = admin_client.patch(
+            "/api/admin/products/demo-rice/image",
+            json={"image_url": "https://example.com/rice.jpg"},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["image_url"] == "https://example.com/rice.jpg"
+        assert next(
+            product for product in admin_client.get("/api/admin/products").json()["products"]
+            if product["id"] == "demo-rice"
+        )["image_url"] == "https://example.com/rice.jpg"
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/image",
+            json={"image_url": "javascript:alert(1)"},
+        ).status_code == 422
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/image",
+            json={"image_url": ""},
+        ).json()["image_url"] == ""
+
+
+def test_super_admin_can_delete_product_and_preserves_past_order(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(app_module, "DEMO_PRODUCTS", [dict(product) for product in app_module.DEMO_PRODUCTS])
+    monkeypatch.setattr(app_module, "DEMO_ORDERS", [])
+    monkeypatch.setattr(app_module, "DEMO_LOCATION_STOCK", {
+        product_id: dict(stocks) for product_id, stocks in app_module.DEMO_LOCATION_STOCK.items()
+    })
+
+    with TestClient(app, base_url="https://testserver") as admin_client:
+        assert admin_client.delete("/api/admin/products/demo-rice").status_code == 401
+        assert admin_client.post(
+            "/api/admin/login",
+            json={"password": "test-admin-password"},
+        ).status_code == 200
+        order_response = admin_client.post("/api/orders", json={
+            "customer_name": "A Customer",
+            "customer_phone": "1234567890",
+            "delivery_address": "1 Main Street",
+            "delivery_location_id": "solli",
+            "items": [{"product_id": "demo-rice", "quantity": 1}],
+        })
+        assert order_response.status_code == 200
+        order_id = order_response.json()["order_id"]
+
+        deleted = admin_client.delete("/api/admin/products/demo-rice")
+
+        assert deleted.status_code == 200
+        assert all(
+            product["id"] != "demo-rice"
+            for product in admin_client.get("/api/admin/products").json()["products"]
+        )
+        assert all(
+            product["id"] != "demo-rice"
+            for product in admin_client.get("/api/catalog?location_id=solli").json()["products"]
+        )
+        assert "demo-rice" not in app_module.DEMO_LOCATION_STOCK
+        historical_order = next(order for order in app_module.DEMO_ORDERS if order["id"] == order_id)
+        historical_item = historical_order["order_items"][0]
+        assert historical_item["product_id"] is None
+        assert historical_item["product_name"] == "Basmati rice"
+        assert historical_item["unit_price"] == 8.5
+        assert historical_item["line_total"] == 8.5
+        assert historical_order["total"] == 8.5
+        assert admin_client.delete("/api/admin/products/demo-rice").status_code == 404
+
+
 def test_catalog_database_error_is_logged_and_actionable(monkeypatch, caplog):
     class FailingQuery:
         def table(self, _name):
@@ -667,6 +751,11 @@ def test_owner_can_create_and_assign_location_admin(monkeypatch):
             "/api/admin/products/demo-rice/availability",
             json={"is_available": False},
         ).status_code == 403
+        assert staff_client.patch(
+            "/api/admin/products/demo-rice/image",
+            json={"image_url": "https://example.com/rice.jpg"},
+        ).status_code == 403
+        assert staff_client.delete("/api/admin/products/demo-rice").status_code == 403
         assert staff_client.post("/api/admin/products", json={
             "category_id": "fruits",
             "name": "Staff-created fruit",
