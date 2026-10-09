@@ -26,7 +26,9 @@ def test_progressive_web_app_files_are_served():
     assert "api" not in worker_response.text.casefold()
     assert icon_response.status_code == 200
     assert icon_response.headers["content-type"] == "image/png"
-    assert b"apple-mobile-web-app-capable" in client.get("/").content
+    page = client.get("/").content
+    assert b"apple-mobile-web-app-capable" in page
+    assert b"Food <i>&</i> Snacks<small>NEIGHBORHOOD FOOD COURT</small>" in page
 
 
 def test_order_items_merge_duplicate_products():
