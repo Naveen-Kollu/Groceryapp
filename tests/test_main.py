@@ -61,7 +61,11 @@ def test_demo_catalog_has_categories_and_products(monkeypatch):
     })
     response = client.get("/api/catalog")
     assert response.status_code == 200
-    assert "vegetables" in {category["id"] for category in response.json()["categories"]}
+    categories = {category["id"]: category["name"] for category in response.json()["categories"]}
+    assert categories["vegetables"] == "Indian Breakfast"
+    assert categories["fruits"] == "Indian Snacks"
+    assert categories["indian-lunch-dinner"] == "Indian Lunch/Dinner"
+    assert any(product["category_id"] == "indian-lunch-dinner" for product in response.json()["products"])
     assert any(product["image_url"] for product in response.json()["products"])
     locations = client.get("/api/delivery-locations").json()["locations"]
     assert [location["name"] for location in locations] == ["Skullerud", "Solli", "Sagane", "Fornebu", "Veitvet"]
@@ -394,7 +398,7 @@ def test_admin_can_review_orders_and_update_prices(monkeypatch):
         assert item_request.status_code == 201
         assert requests[0]["id"] == item_request.json()["request_id"]
         assert requests[0]["requested_name"] == "Curry leaves"
-        assert requests[0]["category_name"] == "Vegetables"
+        assert requests[0]["category_name"] == "Indian Breakfast"
         assert requests[0]["delivery_address"] == "1 Main Street"
         assert requests[0]["delivery_location_name"] == "Solli"
         assert requests[0]["note"] == "Fresh, please"
@@ -438,7 +442,7 @@ def test_owner_can_create_product_with_location_specific_stock(monkeypatch):
             product for product in owner_client.get("/api/admin/products").json()["products"]
             if product["id"] == product_id
         )
-        assert product["category_name"] == "Fruits"
+        assert product["category_name"] == "Indian Snacks"
         assert product["location_inventory"] == {
             "skullerud": 0,
             "solli": 7,

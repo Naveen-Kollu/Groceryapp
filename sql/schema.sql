@@ -107,18 +107,53 @@ alter table public.customer_item_requests
     add column if not exists delivery_address text;
 
 insert into public.categories (id, name, slug, sort_order) values
-    ('vegetables', 'Vegetables', 'vegetables', 1),
-    ('fruits', 'Fruits', 'fruits', 2),
-    ('lentils', 'Lentils & pulses', 'lentils', 3),
-    ('grains', 'Rice & grains', 'grains', 4),
-    ('pantry', 'Pantry', 'pantry', 5)
-on conflict (id) do nothing;
+    ('vegetables', 'Indian Breakfast', 'indian-breakfast', 1),
+    ('fruits', 'Indian Snacks', 'indian-snacks', 2),
+    ('indian-lunch-dinner', 'Indian Lunch/Dinner', 'indian-lunch-dinner', 3),
+    ('lentils', 'Lentils & pulses', 'lentils', 4),
+    ('grains', 'Rice & grains', 'grains', 5),
+    ('pantry', 'Pantry', 'pantry', 6)
+on conflict (id) do update set
+    name = excluded.name,
+    slug = excluded.slug,
+    sort_order = excluded.sort_order;
+
+update public.products set
+    name = 'Idli & sambar',
+    description = 'Soft steamed rice cakes with lentil stew',
+    price = 6.50,
+    unit = 'portion',
+    image_url = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80'
+where category_id = 'vegetables' and name = 'Vine tomatoes';
+update public.products set
+    name = 'Masala dosa',
+    description = 'Crispy dosa with spiced potato filling',
+    price = 7.50,
+    unit = 'portion',
+    image_url = 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=700&q=80'
+where category_id = 'vegetables' and name = 'Baby spinach';
+update public.products set
+    name = 'Vegetable samosa',
+    description = 'Crisp pastry filled with spiced potato',
+    price = 2.50,
+    unit = '2 pieces',
+    image_url = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=80'
+where category_id = 'fruits' and name = 'Gala apples';
+update public.products set
+    name = 'Onion pakora',
+    description = 'Crispy onion fritters with Indian spices',
+    price = 4.50,
+    unit = 'portion',
+    image_url = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=80'
+where category_id = 'fruits' and name = 'Navel oranges';
 
 insert into public.products (category_id, name, description, price, unit, stock_quantity, image_url) values
-    ('vegetables', 'Vine tomatoes', 'Ripe, locally selected', 2.49, '500 g', 18, 'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=700&q=80'),
-    ('vegetables', 'Baby spinach', 'Tender leaves, washed and ready', 3.20, 'bag', 12, 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=700&q=80'),
-    ('fruits', 'Gala apples', 'Crisp and sweet', 3.75, '1 kg', 20, 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=700&q=80'),
-    ('fruits', 'Navel oranges', 'Easy-peel citrus', 2.90, '1 kg', 14, 'https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=700&q=80'),
+    ('vegetables', 'Idli & sambar', 'Soft steamed rice cakes with lentil stew', 6.50, 'portion', 18, 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80'),
+    ('vegetables', 'Masala dosa', 'Crispy dosa with spiced potato filling', 7.50, 'portion', 12, 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=700&q=80'),
+    ('fruits', 'Vegetable samosa', 'Crisp pastry filled with spiced potato', 2.50, '2 pieces', 20, 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=80'),
+    ('fruits', 'Onion pakora', 'Crispy onion fritters with Indian spices', 4.50, 'portion', 14, 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=80'),
+    ('indian-lunch-dinner', 'Vegetable biryani', 'Fragrant basmati rice with vegetables and spices', 10.90, 'portion', 15, 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80'),
+    ('indian-lunch-dinner', 'Paneer curry', 'Paneer in a creamy tomato curry', 11.50, 'portion', 10, 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80'),
     ('lentils', 'Red lentils', 'Quick-cooking, protein-rich', 4.60, '500 g', 16, 'https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=700&q=80'),
     ('lentils', 'Chickpeas', 'Creamy, versatile pantry staple', 3.85, '500 g', 9, 'https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=700&q=80'),
     ('grains', 'Basmati rice', 'Fragrant long grain, aged', 8.50, '2 kg', 10, 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=700&q=80'),

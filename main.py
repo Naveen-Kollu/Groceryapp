@@ -35,8 +35,9 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 CATEGORIES = [
-    {"id": "vegetables", "name": "Vegetables", "slug": "vegetables"},
-    {"id": "fruits", "name": "Fruits", "slug": "fruits"},
+    {"id": "vegetables", "name": "Indian Breakfast", "slug": "indian-breakfast"},
+    {"id": "fruits", "name": "Indian Snacks", "slug": "indian-snacks"},
+    {"id": "indian-lunch-dinner", "name": "Indian Lunch/Dinner", "slug": "indian-lunch-dinner"},
     {"id": "lentils", "name": "Lentils & pulses", "slug": "lentils"},
     {"id": "grains", "name": "Rice & grains", "slug": "grains"},
     {"id": "pantry", "name": "Pantry", "slug": "pantry"},
@@ -50,10 +51,12 @@ DELIVERY_LOCATIONS = [
 ]
 
 DEMO_PRODUCTS = [
-    {"id": "demo-tomatoes", "category_id": "vegetables", "name": "Vine tomatoes", "description": "Ripe, locally selected · 500 g", "price": 2.49, "unit": "500 g", "stock_quantity": 18, "image_url": "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=700&q=80"},
-    {"id": "demo-spinach", "category_id": "vegetables", "name": "Baby spinach", "description": "Tender leaves · washed and ready", "price": 3.20, "unit": "bag", "stock_quantity": 12, "image_url": "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=700&q=80"},
-    {"id": "demo-apples", "category_id": "fruits", "name": "Gala apples", "description": "Crisp and sweet · approx. 4 pieces", "price": 3.75, "unit": "1 kg", "stock_quantity": 20, "image_url": "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=700&q=80"},
-    {"id": "demo-oranges", "category_id": "fruits", "name": "Navel oranges", "description": "Easy-peel citrus · 4 pieces", "price": 2.90, "unit": "1 kg", "stock_quantity": 14, "image_url": "https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=700&q=80"},
+    {"id": "demo-tomatoes", "category_id": "vegetables", "name": "Idli & sambar", "description": "Soft steamed rice cakes with lentil stew", "price": 6.50, "unit": "portion", "stock_quantity": 18, "image_url": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80"},
+    {"id": "demo-spinach", "category_id": "vegetables", "name": "Masala dosa", "description": "Crispy dosa with spiced potato filling", "price": 7.50, "unit": "portion", "stock_quantity": 12, "image_url": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=700&q=80"},
+    {"id": "demo-apples", "category_id": "fruits", "name": "Vegetable samosa", "description": "Crisp pastry filled with spiced potato", "price": 2.50, "unit": "2 pieces", "stock_quantity": 20, "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=80"},
+    {"id": "demo-oranges", "category_id": "fruits", "name": "Onion pakora", "description": "Crispy onion fritters with Indian spices", "price": 4.50, "unit": "portion", "stock_quantity": 14, "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=700&q=80"},
+    {"id": "demo-biryani", "category_id": "indian-lunch-dinner", "name": "Vegetable biryani", "description": "Fragrant basmati rice with vegetables and spices", "price": 10.90, "unit": "portion", "stock_quantity": 15, "image_url": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80"},
+    {"id": "demo-paneer-curry", "category_id": "indian-lunch-dinner", "name": "Paneer curry", "description": "Paneer in a creamy tomato curry", "price": 11.50, "unit": "portion", "stock_quantity": 10, "image_url": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=700&q=80"},
     {"id": "demo-lentils", "category_id": "lentils", "name": "Red lentils", "description": "Quick-cooking, protein-rich", "price": 4.60, "unit": "500 g", "stock_quantity": 16, "image_url": "https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=700&q=80"},
     {"id": "demo-chickpeas", "category_id": "lentils", "name": "Chickpeas", "description": "Creamy, versatile pantry staple", "price": 3.85, "unit": "500 g", "stock_quantity": 9, "image_url": "https://images.unsplash.com/photo-1515543904379-3d757afe72e4?auto=format&fit=crop&w=700&q=80"},
     {"id": "demo-rice", "category_id": "grains", "name": "Basmati rice", "description": "Fragrant long grain · aged", "price": 8.50, "unit": "2 kg", "stock_quantity": 10, "image_url": "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=700&q=80"},
