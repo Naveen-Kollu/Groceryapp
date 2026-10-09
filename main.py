@@ -5,7 +5,7 @@ import json
 import logging
 import smtplib
 import ssl
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from email.message import EmailMessage
 from secrets import compare_digest, token_urlsafe
@@ -14,6 +14,7 @@ from typing import Any, Literal
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest, urlopen
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -71,6 +72,8 @@ DEMO_ORDERS: list[dict[str, Any]] = []
 DEMO_ITEM_REQUESTS: list[dict[str, Any]] = []
 DEMO_ADMIN_USERS: list[dict[str, Any]] = []
 PASSWORD_HASH_ITERATIONS = 310_000
+ADMIN_ORDER_PAGE_SIZE = 10
+MARKET_TIMEZONE = ZoneInfo("Europe/Oslo")
 
 
 class OrderItem(BaseModel):
@@ -638,15 +641,42 @@ def set_location_admin_active(user_id: str, update: LocationAdminActiveUpdate):
 
 
 @app.get("/api/admin/orders", dependencies=[Depends(require_admin)])
-def get_admin_orders(request: Request):
+def get_admin_orders(
+    request: Request,
+    status: Literal["all", "placed", "confirmed", "packing", "out_for_delivery", "completed", "cancelled"] = "all",
+    period: Literal["today", "all"] = "today",
+    offset: int = Query(default=0, ge=0),
+):
     role = request.session.get("admin_role", "owner")
     location_ids = request.session.get("admin_location_ids", [])
+    today = datetime.now(MARKET_TIMEZONE).date()
+    start_of_today = datetime.combine(today, datetime.min.time(), tzinfo=MARKET_TIMEZONE)
+    start_of_tomorrow = datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=MARKET_TIMEZONE)
+    start_utc = start_of_today.astimezone(timezone.utc).isoformat()
+    end_utc = start_of_tomorrow.astimezone(timezone.utc).isoformat()
+
     client = supabase_client()
     if client is None:
         orders = DEMO_ORDERS
         if role == "location":
             orders = [order for order in orders if order.get("delivery_location_id") in location_ids]
-        return {"orders": orders, "mode": "demo"}
+        if status != "all":
+            orders = [order for order in orders if order.get("status", "placed") == status]
+        if period == "today":
+            def was_created_today(order: dict[str, Any]) -> bool:
+                created_at = datetime.fromisoformat(order["created_at"].replace("Z", "+00:00"))
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                return created_at.astimezone(MARKET_TIMEZONE).date() == today
+
+            orders = [order for order in orders if was_created_today(order)]
+        orders = sorted(orders, key=lambda order: order.get("created_at", ""), reverse=True)
+        page = orders[offset:offset + ADMIN_ORDER_PAGE_SIZE + 1]
+        return {
+            "orders": page[:ADMIN_ORDER_PAGE_SIZE],
+            "has_more": len(page) > ADMIN_ORDER_PAGE_SIZE,
+            "mode": "demo",
+        }
     try:
         query = client.table("customer_orders").select(
             "id,delivery_location_id,customer_name,customer_phone,customer_email,delivery_address,total,status,created_at,"
@@ -654,11 +684,19 @@ def get_admin_orders(request: Request):
         )
         if role == "location":
             query = query.in_("delivery_location_id", location_ids)
-        orders = query.order("created_at", desc=True).execute().data
+        if status != "all":
+            query = query.eq("status", status)
+        if period == "today":
+            query = query.gte("created_at", start_utc).lt("created_at", end_utc)
+        page = query.order("created_at", desc=True).range(
+            offset, offset + ADMIN_ORDER_PAGE_SIZE
+        ).execute().data
+        has_more = len(page) > ADMIN_ORDER_PAGE_SIZE
+        orders = page[:ADMIN_ORDER_PAGE_SIZE]
         location_names = {location["id"]: location["name"] for location in DELIVERY_LOCATIONS}
         for order in orders:
             order["delivery_location_name"] = location_names.get(order["delivery_location_id"], "Unassigned")
-        return {"orders": orders, "mode": "supabase"}
+        return {"orders": orders, "has_more": has_more, "mode": "supabase"}
     except Exception as exc:
         raise database_setup_error(exc, "Orders are temporarily unavailable.") from exc
 

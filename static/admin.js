@@ -2,7 +2,7 @@ const loginPanel = document.querySelector("#login-panel");
 const dashboard = document.querySelector("#admin-dashboard");
 const currency = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const orderStatuses = ["placed", "confirmed", "packing", "out_for_delivery", "completed", "cancelled"];
-const adminState = { role: null, locations: [], locationIds: [] };
+const adminState = { role: null, locations: [], locationIds: [], orders: [], hasMoreOrders: false };
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -49,8 +49,9 @@ function setLoginTab(role) {
 
 function renderOrders(orders) {
   const container = document.querySelector("#orders-list");
+  document.querySelector("#load-more-orders").hidden = !adminState.hasMoreOrders;
   if (!orders.length) {
-    container.innerHTML = '<p class="admin-empty">No orders yet. New customer orders will appear here.</p>';
+    container.innerHTML = '<p class="admin-empty">No orders match these filters.</p>';
     return;
   }
   const groups = new Map();
@@ -213,7 +214,15 @@ async function loadDashboard() {
   showMessage("#price-message", "");
   showMessage("#inventory-message", "");
   const owner = adminState.role === "owner";
-  const tasks = [apiRequest("/api/admin/orders"), apiRequest("/api/admin/products"), apiRequest("/api/delivery-locations")];
+  const orderParameters = new URLSearchParams({
+    period: document.querySelector("#orders-period").value,
+    status: document.querySelector("#orders-status").value,
+  });
+  const tasks = [
+    apiRequest(`/api/admin/orders?${orderParameters}`),
+    apiRequest("/api/admin/products"),
+    apiRequest("/api/delivery-locations"),
+  ];
   if (owner) tasks.push(apiRequest("/api/admin/item-requests"), apiRequest("/api/admin/location-admins"));
   const results = await Promise.allSettled(tasks);
   const [ordersResult, productsResult, locationsResult, requestsResult, usersResult] = results;
@@ -224,10 +233,16 @@ async function loadDashboard() {
   }
 
   if (ordersResult.status === "fulfilled") {
+    adminState.orders = ordersResult.value.orders;
+    adminState.hasMoreOrders = ordersResult.value.has_more;
+    showMessage("#orders-pagination-message", "");
     renderOrders(ordersResult.value.orders);
     document.querySelector("#admin-mode").textContent = ordersResult.value.mode === "demo" ? "DEMO DATA · RESET ON RESTART" : "CONNECTED TO SUPABASE";
   } else {
+    adminState.orders = [];
+    adminState.hasMoreOrders = false;
     document.querySelector("#orders-list").innerHTML = `<p class="admin-empty is-error">${escapeHtml(ordersResult.reason.message)}</p>`;
+    document.querySelector("#load-more-orders").hidden = true;
   }
 
   if (productsResult.status === "fulfilled" && locationsResult.status === "fulfilled") {
@@ -340,6 +355,29 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
 });
 
 document.querySelector("#refresh-orders").addEventListener("click", loadDashboard);
+document.querySelector("#orders-period").addEventListener("change", loadDashboard);
+document.querySelector("#orders-status").addEventListener("change", loadDashboard);
+document.querySelector("#load-more-orders").addEventListener("click", async event => {
+  const button = event.currentTarget;
+  const parameters = new URLSearchParams({
+    period: document.querySelector("#orders-period").value,
+    status: document.querySelector("#orders-status").value,
+    offset: String(adminState.orders.length),
+  });
+  button.disabled = true;
+  showMessage("#orders-pagination-message", "Loading more orders...");
+  try {
+    const result = await apiRequest(`/api/admin/orders?${parameters}`);
+    adminState.orders.push(...result.orders);
+    adminState.hasMoreOrders = result.has_more;
+    showMessage("#orders-pagination-message", "");
+    renderOrders(adminState.orders);
+  } catch (error) {
+    showMessage("#orders-pagination-message", error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
 
 document.querySelector("#location-admin-form").addEventListener("submit", async event => {
   event.preventDefault();

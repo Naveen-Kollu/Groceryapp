@@ -435,6 +435,62 @@ def test_admin_can_review_orders_and_update_prices(monkeypatch):
         assert admin_client.get("/api/admin/orders").status_code == 401
 
 
+def test_admin_orders_default_to_today_with_status_and_pagination_filters(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    now = app_module.datetime.now(app_module.MARKET_TIMEZONE)
+    orders = [
+        {
+            "id": f"today-{index:02}",
+            "created_at": (now - app_module.timedelta(minutes=index)).isoformat(),
+            "status": "placed",
+            "delivery_location_id": "solli",
+            "order_items": [],
+        }
+        for index in range(12)
+    ]
+    orders.append({
+        "id": "today-cancelled",
+        "created_at": now.isoformat(),
+        "status": "cancelled",
+        "delivery_location_id": "solli",
+        "order_items": [],
+    })
+    orders.append({
+        "id": "yesterday-placed",
+        "created_at": (now - app_module.timedelta(days=1)).isoformat(),
+        "status": "placed",
+        "delivery_location_id": "solli",
+        "order_items": [],
+    })
+    monkeypatch.setattr(app_module, "DEMO_ORDERS", orders)
+
+    with TestClient(app, base_url="https://testserver") as admin_client:
+        assert admin_client.post("/api/admin/login", json={"password": "test-admin-password"}).status_code == 200
+
+        first_page = admin_client.get("/api/admin/orders")
+        assert first_page.status_code == 200
+        assert len(first_page.json()["orders"]) == 10
+        assert first_page.json()["has_more"] is True
+        assert all(order["id"] != "yesterday-placed" for order in first_page.json()["orders"])
+
+        second_page = admin_client.get("/api/admin/orders?offset=10")
+        assert len(second_page.json()["orders"]) == 3
+        assert second_page.json()["has_more"] is False
+
+        cancelled = admin_client.get("/api/admin/orders?status=cancelled")
+        assert [order["id"] for order in cancelled.json()["orders"]] == ["today-cancelled"]
+
+        all_dates = admin_client.get("/api/admin/orders?period=all&status=placed")
+        assert all_dates.status_code == 200
+        assert len(all_dates.json()["orders"]) == 10
+        assert all_dates.json()["has_more"] is True
+        all_dates_tail = admin_client.get("/api/admin/orders?period=all&status=placed&offset=10")
+        assert any(order["id"] == "yesterday-placed" for order in all_dates_tail.json()["orders"])
+        assert admin_client.get("/api/admin/orders?status=unknown").status_code == 422
+
+
 def test_owner_can_create_product_with_location_specific_stock(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)

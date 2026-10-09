@@ -47,8 +47,31 @@
     <section id="admin-dashboard" hidden>
       <div class="admin-title-row"><div><p class="eyebrow">YOUR MARKET, IN GOOD HANDS</p><h1>Market <em>desk.</em></h1></div><span id="admin-mode" class="admin-mode"></span></div>
       <section class="admin-section" aria-labelledby="orders-title">
-        <div class="admin-section-heading"><div><h2 id="orders-title">Customer orders</h2><p>Recent orders and delivery details</p></div><button id="refresh-orders" class="refresh-button" type="button" aria-label="Refresh orders" title="Refresh orders">↻</button></div>
+        <div class="admin-section-heading"><div><h2 id="orders-title">Customer orders</h2><p>Today's orders are shown first. Choose all dates to browse order history.</p></div><button id="refresh-orders" class="refresh-button" type="button" aria-label="Refresh orders" title="Refresh orders">↻</button></div>
+        <div class="order-filters">
+          <label>Orders from
+            <select id="orders-period">
+              <option value="today" selected>Today</option>
+              <option value="all">All dates</option>
+            </select>
+          </label>
+          <label>Order status
+            <select id="orders-status">
+              <option value="all" selected>All statuses</option>
+              <option value="placed">Placed</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="packing">Packing</option>
+              <option value="out_for_delivery">Out for delivery</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
+        </div>
         <div id="orders-list" class="orders-list" aria-live="polite"></div>
+        <div class="orders-pagination">
+          <button id="load-more-orders" class="save-price-button" type="button" hidden>Load 10 more orders</button>
+          <p id="orders-pagination-message" class="form-message" role="status"></p>
+        </div>
       </section>
       <section id="owner-requests-section" class="admin-section" aria-labelledby="item-requests-title">
         <div class="admin-section-heading"><div><h2 id="item-requests-title">Customer item requests</h2><p>Products customers would like to see in the market</p></div></div>
