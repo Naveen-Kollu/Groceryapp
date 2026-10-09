@@ -241,6 +241,28 @@ def test_order_confirmation_sends_details_to_opted_in_channels(monkeypatch):
     assert "2 x Basmati rice @ 8,50 kr = 17,00 kr" in sent["sms"][1]
 
 
+def test_email_notification_logs_os_error_details(monkeypatch, caplog):
+    def fail_to_send(*_args):
+        raise OSError("connection timed out")
+
+    monkeypatch.setattr(app_module, "send_order_email", fail_to_send)
+
+    sent, warnings = app_module.send_order_notifications(
+        "879b291f-abcd",
+        "A Customer",
+        "customer@example.com",
+        "+4712345678",
+        False,
+        "Veitvet",
+        [{"product_name": "Basmati rice", "quantity": 1, "unit_price": 8.5, "line_total": 8.5}],
+        8.5,
+    )
+
+    assert sent == []
+    assert warnings[0].startswith("Email confirmation could not be sent")
+    assert "Order 879B291F email notification failed (OSError: connection timed out)." in caplog.text
+
+
 def test_brevo_email_uses_https_api_with_verified_sender(monkeypatch):
     captured = {}
 

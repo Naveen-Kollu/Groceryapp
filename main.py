@@ -310,7 +310,12 @@ def send_order_notifications(
             send_order_email(customer_email, f"Order {order_number} confirmation", body)
             sent_channels.append("email")
         except Exception as exc:
-            logger.warning("Order %s email notification failed (%s).", order_number, type(exc).__name__)
+            logger.warning(
+                "Order %s email notification failed (%s: %s).",
+                order_number,
+                type(exc).__name__,
+                exc,
+            )
             warnings.append("Email confirmation could not be sent; check the SMTP settings.")
     else:
         warnings.append("Email confirmation was not sent because no email address was provided.")
