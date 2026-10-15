@@ -1,4 +1,4 @@
-const CACHE_NAME = "root-river-shell-v1";
+const CACHE_NAME = "root-river-shell-v2";
 const SHELL_FILES = [
   "/",
   "/static/styles.css",
