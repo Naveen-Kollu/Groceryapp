@@ -81,7 +81,12 @@
             <button class="button button-order" type="submit">Place order <span id="order-button-total">0,00 kr</span></button>
           </form>
         </div>
-        <p id="order-message" class="form-message order-confirmation" role="status"></p>
+        <section id="order-confirmation" class="order-confirmation" aria-live="polite" hidden>
+          <h3>Successfully ordered!</h3>
+          <p>Order number: <strong id="confirmed-order-number"></strong></p>
+          <ul id="confirmed-order-items"></ul>
+        </section>
+        <p id="order-message" class="form-message" role="status"></p>
         <section class="basket-status" aria-labelledby="basket-status-title">
           <h3 id="basket-status-title">Track an order</h3>
           <p>Enter your 8-character order number to check its latest status.</p>

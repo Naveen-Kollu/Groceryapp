@@ -194,6 +194,8 @@ document.querySelector("#checkout-form").addEventListener("submit", async event 
   event.preventDefault();
   const form = event.currentTarget;
   const submitButton = form.querySelector("button[type=submit]");
+  const confirmation = document.querySelector("#order-confirmation");
+  confirmation.hidden = true;
   submitButton.disabled = true;
   showFormMessage("#order-message", "Placing your order...");
   const formData = new FormData(form);
@@ -206,6 +208,7 @@ document.querySelector("#checkout-form").addEventListener("submit", async event 
   }
   payload.delivery_location_id = state.selectedLocation;
   payload.items = Object.values(state.cart).map(item => ({ product_id: item.product_id, quantity: item.quantity }));
+  const orderedItems = Object.values(state.cart).map(item => ({ name: item.name, quantity: item.quantity, unit: item.unit }));
   try {
     const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const result = await response.json();
@@ -217,6 +220,11 @@ document.querySelector("#checkout-form").addEventListener("submit", async event 
     renderProducts();
     form.reset();
     const orderNumber = String(result.order_id).slice(0, 8).toUpperCase();
+    document.querySelector("#confirmed-order-number").textContent = orderNumber;
+    document.querySelector("#confirmed-order-items").innerHTML = orderedItems
+      .map(item => `<li>${escapeHtml(item.name)} × ${item.quantity} ${escapeHtml(item.unit || "each")}</li>`)
+      .join("");
+    confirmation.hidden = false;
     const notificationsSent = (result.notifications_sent || []).join(" and ");
     const notificationSummary = notificationsSent
       ? ` Confirmation sent by ${notificationsSent}.`
@@ -226,7 +234,7 @@ document.querySelector("#checkout-form").addEventListener("submit", async event 
       "#order-message",
       `${result.message} Order number: ${orderNumber}. Use “Track an order” to check its status.${notificationSummary}${notificationWarnings ? ` ${notificationWarnings}` : ""}`,
     );
-    await loadCatalog();
+    await loadCatalog().catch(showCatalogError);
   } catch (error) {
     showFormMessage("#order-message", error.message, true);
   } finally { submitButton.disabled = false; }

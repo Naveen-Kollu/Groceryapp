@@ -99,6 +99,9 @@ h1 em { color: #789247; font-weight: 500; }
 .basket-total strong { font-size: 15px; }
 .delivery-note { margin: 0 0 12px; color: var(--muted); font-size: 9px; }
 .order-confirmation { margin-top: 10px; padding: 9px; border: 1px solid #dce5ce; background: #f4f7ed; line-height: 1.6; overflow-wrap: anywhere; }
+.order-confirmation h3 { margin: 0 0 5px; color: #32624f; font-family: var(--serif); font-size: 16px; }
+.order-confirmation p { margin: 0 0 6px; font-size: 10px; }
+.order-confirmation ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; color: #53665a; font-size: 10px; }
 .basket-status { margin-top: 18px; padding-top: 15px; border-top: 1px solid #eceee6; }
 .basket-status h3 { margin: 0 0 5px; font-family: var(--serif); font-size: 16px; }
 .basket-status > p { margin: 0 0 10px; color: var(--muted); font-size: 9px; line-height: 1.5; }
