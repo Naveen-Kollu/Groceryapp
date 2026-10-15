@@ -1,9 +1,11 @@
-const CACHE_NAME = "root-river-shell-v2";
+const CACHE_NAME = "root-river-shell-v5";
 const SHELL_FILES = [
   "/",
   "/static/styles.css",
   "/static/app.js",
   "/static/icons/market-icon.svg",
+  "/static/icons/brand-image.png",
+  "/static/icons/brand-image-right.png",
 ];
 
 self.addEventListener("install", event => {

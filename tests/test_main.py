@@ -14,6 +14,8 @@ def test_progressive_web_app_files_are_served():
     manifest_response = client.get("/manifest.webmanifest")
     worker_response = client.get("/service-worker.js")
     icon_response = client.get("/static/icons/apple-touch-icon.png")
+    brand_image_response = client.get("/static/icons/brand-image.png")
+    second_brand_image_response = client.get("/static/icons/brand-image-right.png")
 
     assert manifest_response.status_code == 200
     assert manifest_response.headers["content-type"].startswith("application/manifest+json")
@@ -28,6 +30,10 @@ def test_progressive_web_app_files_are_served():
     assert "api" not in worker_response.text.casefold()
     assert icon_response.status_code == 200
     assert icon_response.headers["content-type"] == "image/png"
+    assert brand_image_response.status_code == 200
+    assert brand_image_response.headers["content-type"] == "image/png"
+    assert second_brand_image_response.status_code == 200
+    assert second_brand_image_response.headers["content-type"] == "image/png"
     page = client.get("/").content
     assert b"apple-mobile-web-app-capable" in page
     assert b"<title>Food &amp; Snacks" in page
