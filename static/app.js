@@ -71,7 +71,7 @@ function renderCategories() {
     state.activeCategory = button.dataset.category;
     document.querySelector("#request-message").textContent = "";
     document.querySelector("#order-status-message").textContent = "";
-    document.querySelector("#section-title").textContent = state.activeCategory === "requests" ? "Customer requests" : state.activeCategory === "track-order" ? "Check order status" : state.activeCategory === "all" ? "Shop the market" : state.categories.find(item => item.id === state.activeCategory)?.name || "Shop the market";
+    document.querySelector("#section-title").textContent = state.activeCategory === "requests" ? "Customer requests" : state.activeCategory === "track-order" ? "Check order status" : state.activeCategory === "all" ? "Today’s delicious delights" : state.categories.find(item => item.id === state.activeCategory)?.name || "Today’s delicious delights";
     catalogView.hidden = state.activeCategory === "requests" || state.activeCategory === "track-order";
     requestView.hidden = state.activeCategory !== "requests";
     orderStatusView.hidden = state.activeCategory !== "track-order";
