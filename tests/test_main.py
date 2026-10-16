@@ -38,6 +38,11 @@ def test_progressive_web_app_files_are_served():
     assert b"apple-mobile-web-app-capable" in page
     assert b"<title>Food &amp; Snacks" in page
     assert b"Food <i>&</i> Snacks<small>NEIGHBORHOOD FOOD COURT</small>" in page
+    assert page.index(b"brand-image-right.png") < page.index(b"Food <i>&</i> Snacks")
+    assert page.index(b"brand-image.png") < page.index(b"Find something good")
+    assert b"Whenever you crave a" in page
+    assert b"taste of home" in page
+    assert b"motherland" in page
 
 
 def test_order_items_merge_duplicate_products():
