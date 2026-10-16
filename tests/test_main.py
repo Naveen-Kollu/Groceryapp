@@ -14,6 +14,7 @@ def test_progressive_web_app_files_are_served():
     manifest_response = client.get("/manifest.webmanifest")
     worker_response = client.get("/service-worker.js")
     icon_response = client.get("/static/icons/apple-touch-icon.png")
+    market_icon_response = client.get("/static/icons/market-icon.svg")
     brand_image_response = client.get("/static/icons/brand-image.png")
     second_brand_image_response = client.get("/static/icons/brand-image-right.png")
 
@@ -21,21 +22,26 @@ def test_progressive_web_app_files_are_served():
     assert manifest_response.headers["content-type"].startswith("application/manifest+json")
     manifest = json.loads(manifest_response.text)
     assert manifest["name"] == "Food & Snacks - Neighborhood Food Court"
-    assert manifest["short_name"] == "Food & Snacks"
+    assert manifest["short_name"] == "F&S"
     assert manifest["display"] == "standalone"
     assert manifest["start_url"] == "/"
     assert {icon["sizes"] for icon in manifest["icons"]} == {"192x192", "512x512"}
     assert worker_response.status_code == 200
     assert worker_response.headers["service-worker-allowed"] == "/"
+    assert "root-river-shell-v6" in worker_response.text
+    assert '"/manifest.webmanifest"' in worker_response.text
     assert "api" not in worker_response.text.casefold()
     assert icon_response.status_code == 200
     assert icon_response.headers["content-type"] == "image/png"
+    assert market_icon_response.status_code == 200
+    assert "F&amp;S" in market_icon_response.text
     assert brand_image_response.status_code == 200
     assert brand_image_response.headers["content-type"] == "image/png"
     assert second_brand_image_response.status_code == 200
     assert second_brand_image_response.headers["content-type"] == "image/png"
     page = client.get("/").content
     assert b"apple-mobile-web-app-capable" in page
+    assert b'name="apple-mobile-web-app-title" content="F&amp;S"' in page
     assert b"<title>Food &amp; Snacks" in page
     assert b"Food <i>&</i> Snacks<small>NEIGHBORHOOD FOOD COURT</small>" in page
     assert page.index(b"brand-image-right.png") < page.index(b"Food <i>&</i> Snacks")

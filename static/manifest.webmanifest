@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Food & Snacks - Neighborhood Food Court",
-  "short_name": "Food & Snacks",
+  "short_name": "F&S",
   "description": "Shop neighborhood groceries and track your orders.",
   "start_url": "/",
   "scope": "/",

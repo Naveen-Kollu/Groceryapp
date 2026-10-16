@@ -1,4 +1,4 @@
-const CACHE_NAME = "root-river-shell-v5";
+const CACHE_NAME = "root-river-shell-v6";
 const SHELL_FILES = [
   "/",
   "/static/styles.css",
@@ -6,6 +6,10 @@ const SHELL_FILES = [
   "/static/icons/market-icon.svg",
   "/static/icons/brand-image.png",
   "/static/icons/brand-image-right.png",
+  "/static/icons/apple-touch-icon.png",
+  "/static/icons/icon-192.png",
+  "/static/icons/icon-512.png",
+  "/manifest.webmanifest",
 ];
 
 self.addEventListener("install", event => {
