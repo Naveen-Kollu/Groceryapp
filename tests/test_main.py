@@ -111,12 +111,16 @@ def test_super_admin_can_add_delivery_location_and_manage_its_stock(monkeypatch)
     monkeypatch.setattr(app_module, "DEMO_LOCATION_STOCK", {
         product_id: dict(stocks) for product_id, stocks in app_module.DEMO_LOCATION_STOCK.items()
     })
+    monkeypatch.setattr(app_module, "DEMO_ORDERS", [])
+    monkeypatch.setattr(app_module, "DEMO_ITEM_REQUESTS", [])
+    monkeypatch.setattr(app_module, "DEMO_ADMIN_USERS", [])
 
     with TestClient(app, base_url="https://testserver") as admin_client:
         assert admin_client.post(
             "/api/admin/delivery-locations",
             json={"name": "Oslo Central"},
         ).status_code == 401
+        assert admin_client.delete("/api/admin/delivery-locations/skullerud").status_code == 401
         assert admin_client.post(
             "/api/admin/login",
             json={"password": "test-admin-password"},
@@ -142,6 +146,32 @@ def test_super_admin_can_add_delivery_location_and_manage_its_stock(monkeypatch)
         catalog = admin_client.get("/api/catalog?location_id=oslo-central")
         assert catalog.status_code == 200
         assert next(product for product in catalog.json()["products"] if product["id"] == "demo-rice")["stock_quantity"] == 4
+        assigned_admin = admin_client.post("/api/admin/location-admins", json={
+            "username": "oslo-staff",
+            "display_name": "Oslo Staff",
+            "password": "a-strong-test-password",
+            "location_ids": ["oslo-central"],
+        })
+        assert assigned_admin.status_code == 201
+
+        app_module.DEMO_ORDERS.append({"delivery_location_id": "oslo-central"})
+        order_history = admin_client.delete("/api/admin/delivery-locations/oslo-central")
+        assert order_history.status_code == 409
+        assert "order history" in order_history.json()["detail"]
+        app_module.DEMO_ORDERS.clear()
+
+        app_module.DEMO_ITEM_REQUESTS.append({"delivery_location_id": "oslo-central"})
+        request_history = admin_client.delete("/api/admin/delivery-locations/oslo-central")
+        assert request_history.status_code == 409
+        assert "customer request history" in request_history.json()["detail"]
+        app_module.DEMO_ITEM_REQUESTS.clear()
+
+        deleted = admin_client.delete("/api/admin/delivery-locations/oslo-central")
+        assert deleted.status_code == 200
+        assert all(location["id"] != "oslo-central" for location in admin_client.get("/api/delivery-locations").json()["locations"])
+        assert "oslo-central" not in app_module.DEMO_LOCATION_STOCK["demo-rice"]
+        assert "oslo-central" not in app_module.DEMO_ADMIN_USERS[0]["location_ids"]
+        assert admin_client.get("/api/catalog?location_id=oslo-central").status_code == 422
 
 
 def test_super_admin_controls_product_customer_availability(monkeypatch):

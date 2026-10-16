@@ -580,6 +580,54 @@ def create_delivery_location(location: DeliveryLocationCreate):
         raise database_setup_error(exc, "The delivery location could not be created.") from exc
 
 
+@app.delete("/api/admin/delivery-locations/{location_id}", dependencies=[Depends(require_owner)])
+def delete_delivery_location(location_id: str):
+    client = supabase_client()
+    locations = delivery_locations(client)
+    location = next((item for item in locations if item["id"] == location_id), None)
+    if location is None:
+        raise HTTPException(status_code=404, detail="Delivery location not found.")
+    if len(locations) == 1:
+        raise HTTPException(status_code=409, detail="At least one delivery location must remain.")
+
+    if client is None:
+        if any(order.get("delivery_location_id") == location_id for order in DEMO_ORDERS):
+            raise HTTPException(status_code=409, detail="This location has order history and cannot be deleted.")
+        if any(item.get("delivery_location_id") == location_id for item in DEMO_ITEM_REQUESTS):
+            raise HTTPException(status_code=409, detail="This location has customer request history and cannot be deleted.")
+        DELIVERY_LOCATIONS.remove(location)
+        for inventory in DEMO_LOCATION_STOCK.values():
+            inventory.pop(location_id, None)
+        for user in DEMO_ADMIN_USERS:
+            user["location_ids"] = [assigned_id for assigned_id in user["location_ids"] if assigned_id != location_id]
+        return {"location_id": location_id, "mode": "demo"}
+
+    try:
+        for table in ("customer_orders", "customer_item_requests"):
+            references = client.table(table).select("id").eq(
+                "delivery_location_id", location_id
+            ).limit(1).execute().data
+            if references:
+                record_type = "order" if table == "customer_orders" else "customer request"
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"This location has {record_type} history and cannot be deleted.",
+                )
+        deleted = client.table("delivery_locations").delete().eq("id", location_id).select("id").execute().data
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Delivery location not found.")
+        return {"location_id": location_id, "mode": "supabase"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if "foreign key" in str(exc).casefold() or "23503" in str(exc).casefold():
+            raise HTTPException(
+                status_code=409,
+                detail="This location is referenced by order or customer request history and cannot be deleted.",
+            ) from exc
+        raise database_setup_error(exc, "The delivery location could not be deleted.") from exc
+
+
 @app.get("/api/admin/location-admins", dependencies=[Depends(require_owner)])
 def get_location_admins():
     client = supabase_client()

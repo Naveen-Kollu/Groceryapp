@@ -232,8 +232,28 @@ function renderLocationOptions(locations) {
 
 function renderDeliveryLocations(locations) {
   document.querySelector("#delivery-locations-list").innerHTML = locations.map(location =>
-    `<article class="location-admin-card"><div class="location-admin-heading"><div><strong>${escapeHtml(location.name)}</strong><span>${escapeHtml(location.id)}</span></div></div></article>`
+    `<article class="location-admin-card"><div class="location-admin-heading"><div><strong>${escapeHtml(location.name)}</strong><span>${escapeHtml(location.id)}</span></div><button class="delete-product-button" type="button" data-delete-location="${escapeHtml(location.id)}" data-location-name="${escapeHtml(location.name)}" ${locations.length === 1 ? "disabled title=\"At least one delivery location must remain.\"" : ""}>Delete location</button></div></article>`
   ).join("");
+  document.querySelectorAll("[data-delete-location]").forEach(button =>
+    button.addEventListener("click", () => deleteDeliveryLocation(button))
+  );
+}
+
+async function deleteDeliveryLocation(button) {
+  const locationId = button.dataset.deleteLocation;
+  const locationName = button.dataset.locationName;
+  if (!window.confirm(`Delete "${locationName}"? Its inventory and staff assignments will be removed. Locations with order or customer request history cannot be deleted.`)) return;
+  button.disabled = true;
+  showMessage("#delivery-location-message", `Deleting ${locationName}...`);
+  try {
+    await apiRequest(`/api/admin/delivery-locations/${encodeURIComponent(locationId)}`, {
+      method: "DELETE",
+    });
+    showMessage("#delivery-location-message", `Deleted ${locationName}.`);
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#delivery-location-message", error.message, true);
+  } finally { button.disabled = false; }
 }
 
 function renderProductForm(categories, locations) {
