@@ -83,6 +83,12 @@
           </form>
         </div>
         <p id="order-message" class="form-message order-confirmation" role="status"></p>
+        <section id="order-confirmation" class="order-confirmation" aria-live="polite" hidden>
+          <h3>Order confirmed</h3>
+          <p>Your order number is <strong id="confirmed-order-number"></strong>.</p>
+          <p>Items in your order:</p>
+          <ul id="confirmed-order-items"></ul>
+        </section>
         <section class="basket-status" aria-labelledby="basket-status-title">
           <h3 id="basket-status-title">Track an order</h3>
           <p>Enter your 8-character order number to check its latest status.</p>

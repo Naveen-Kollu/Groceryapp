@@ -502,6 +502,9 @@ def test_demo_order_and_item_request_are_accepted(monkeypatch):
     assert page.rfind("</div>", checkout_form, confirmation) > checkout_form
     assert 'id="basket-order-status-form"' in page
     assert 'name="sms_consent" type="checkbox"' in page
+    assert 'id="order-confirmation"' in page
+    assert 'id="confirmed-order-number"' in page
+    assert 'id="confirmed-order-items"' in page
     assert client.get("/api/admin/item-requests").status_code == 401
     invalid_location_order = client.post("/api/orders", json={
         "customer_name": "A Customer",

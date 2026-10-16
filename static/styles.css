@@ -173,7 +173,7 @@ h1 em { color: #789247; font-weight: 500; }
   h1 { font-size: 35px; }
   .market-note { max-width: none; text-align: left; }
   .shop-layout { grid-template-columns: 1fr; }
-  .basket { position: static; grid-row: 1; }
+  .basket { position: static; }
   .basket-lines { max-height: 190px; }
   .basket-empty { padding: 13px 5px; }
   .basket-empty p { display: inline; }
