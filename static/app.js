@@ -1,6 +1,6 @@
 const state = {
   categories: [], products: [], locations: [], activeCategory: "all", search: "", cart: loadCart(), mode: "demo",
-  selectedLocation: localStorage.getItem("root-river-location") || "",
+  selectedLocation: localStorage.getItem("root-river-location") || "skullerud",
   cartLocation: localStorage.getItem("root-river-cart-location") || "",
 };
 const currency = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
@@ -33,29 +33,32 @@ function getImageUrl(value) {
 }
 
 async function loadCatalog() {
+  if (!state.locations.length) {
+    const locationsResponse = await fetch("/api/delivery-locations");
+    if (!locationsResponse.ok) {
+      const result = await locationsResponse.json();
+      throw new Error(result.detail || "Delivery locations are temporarily unavailable.");
+    }
+    state.locations = (await locationsResponse.json()).locations;
+    if (!state.locations.some(location => location.id === state.selectedLocation)) {
+      state.selectedLocation = state.locations.find(location => location.id === "skullerud")?.id
+        || state.locations[0]?.id
+        || "";
+    }
+    localStorage.setItem("root-river-location", state.selectedLocation);
+  }
   const parameters = new URLSearchParams();
   if (state.activeCategory !== "all" && state.activeCategory !== "requests" && state.activeCategory !== "track-order") parameters.set("category", state.activeCategory);
   if (state.search) parameters.set("search", state.search);
   if (state.selectedLocation) parameters.set("location_id", state.selectedLocation);
-  const [response, locationsResponse] = await Promise.all([
-    fetch(`/api/catalog?${parameters}`),
-    state.locations.length ? Promise.resolve(null) : fetch("/api/delivery-locations"),
-  ]);
+  const response = await fetch(`/api/catalog?${parameters}`);
   if (!response.ok) {
     const result = await response.json();
     throw new Error(result.detail || "The market is having trouble loading.");
   }
-  if (locationsResponse && !locationsResponse.ok) {
-    const result = await locationsResponse.json();
-    throw new Error(result.detail || "Delivery locations are temporarily unavailable.");
-  }
-  const [catalog, locationsResult] = await Promise.all([
-    response.json(),
-    locationsResponse ? locationsResponse.json() : Promise.resolve({ locations: state.locations }),
-  ]);
+  const catalog = await response.json();
   state.categories = catalog.categories;
   state.products = catalog.products;
-  state.locations = locationsResult.locations;
   state.mode = catalog.mode;
   renderRequestCategories();
   renderDeliveryLocations();
@@ -94,7 +97,11 @@ function renderDeliveryLocations() {
     `<option value="${escapeHtml(location.id)}">${escapeHtml(location.name)}</option>`
   ).join("");
   const shopSelect = document.querySelector("#delivery-location");
-  if (!state.locations.some(location => location.id === state.selectedLocation)) state.selectedLocation = "";
+  if (!state.locations.some(location => location.id === state.selectedLocation)) {
+    state.selectedLocation = state.locations.find(location => location.id === "skullerud")?.id
+      || state.locations[0]?.id
+      || "";
+  }
   shopSelect.innerHTML = options;
   shopSelect.value = state.selectedLocation;
   const requestSelect = document.querySelector("#request-location");

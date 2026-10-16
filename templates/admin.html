@@ -100,6 +100,13 @@
         <p id="inventory-message" class="form-message" role="status"></p>
       </section>
       <section id="location-admins-section" class="admin-section" aria-labelledby="location-admins-title" hidden>
+        <div class="admin-section-heading"><div><h2 id="delivery-locations-title">Delivery locations</h2><p>Add locations for customers, inventory, and location-team assignments.</p></div></div>
+        <form id="delivery-location-form" class="location-admin-form">
+          <label>Location name<input name="name" required minlength="2" maxlength="120" placeholder="e.g. Oslo Central"></label>
+          <button class="button button-dark" type="submit">Add delivery location</button>
+          <p id="delivery-location-message" class="form-message" role="status"></p>
+        </form>
+        <div id="delivery-locations-list" class="location-admins-list" aria-live="polite"></div>
         <div class="admin-section-heading"><div><h2 id="location-admins-title">Location teams</h2><p>Create staff accounts and assign them to one or more delivery locations.</p></div></div>
         <form id="location-admin-form" class="location-admin-form">
           <label>Staff name<input name="display_name" required minlength="2" maxlength="120" placeholder="Team member name"></label>

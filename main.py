@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 import logging
+import re
 import smtplib
 import ssl
 from datetime import datetime, timedelta, timezone
@@ -110,7 +111,7 @@ class LocationAdminCreate(BaseModel):
     username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9._-]+$")
     display_name: str = Field(min_length=2, max_length=120)
     password: str = Field(min_length=12, max_length=256)
-    location_ids: list[str] = Field(min_length=1, max_length=5)
+    location_ids: list[str] = Field(min_length=1, max_length=1000)
 
 
 class LocationAdminActiveUpdate(BaseModel):
@@ -118,7 +119,19 @@ class LocationAdminActiveUpdate(BaseModel):
 
 
 class LocationAdminLocationsUpdate(BaseModel):
-    location_ids: list[str] = Field(min_length=1, max_length=5)
+    location_ids: list[str] = Field(min_length=1, max_length=1000)
+
+
+class DeliveryLocationCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 2:
+            raise ValueError("Enter a location name with at least 2 characters.")
+        return value
 
 
 class PriceUpdate(BaseModel):
@@ -154,7 +167,7 @@ class ProductCreate(BaseModel):
     price: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     unit: str = Field(default="each", min_length=1, max_length=60)
     image_url: str = Field(default="", max_length=2048)
-    location_stock: dict[str, int] = Field(min_length=1, max_length=5)
+    location_stock: dict[str, int] = Field(min_length=1, max_length=1000)
 
     @field_validator("location_stock")
     @classmethod
@@ -433,7 +446,7 @@ def require_admin(request: Request) -> None:
                 location_ids = []
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Staff access could not be verified.") from exc
-    if not valid_location_ids(location_ids):
+    if not valid_location_ids(location_ids, delivery_locations(client)):
         request.session.clear()
         raise HTTPException(status_code=401, detail="This location-team account is inactive or unassigned.")
     request.session["admin_location_ids"] = location_ids
@@ -445,8 +458,21 @@ def require_owner(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Owner access required.")
 
 
-def valid_location_ids(location_ids: list[str]) -> bool:
-    allowed = {location["id"] for location in DELIVERY_LOCATIONS}
+def delivery_locations(client=None) -> list[dict[str, str]]:
+    client = client or supabase_client()
+    if client is None:
+        return DELIVERY_LOCATIONS
+    try:
+        return client.table("delivery_locations").select("id,name").order("id").execute().data
+    except Exception as exc:
+        raise database_setup_error(exc, "Delivery locations are temporarily unavailable.") from exc
+
+
+def valid_location_ids(
+    location_ids: list[str],
+    locations: list[dict[str, str]] | None = None,
+) -> bool:
+    allowed = {location["id"] for location in (locations if locations is not None else delivery_locations())}
     return bool(location_ids) and len(location_ids) == len(set(location_ids)) and set(location_ids) <= allowed
 
 
@@ -490,7 +516,7 @@ def admin_login(login: AdminLogin, request: Request):
                 raise database_setup_error(exc, "Staff sign-in is temporarily unavailable.") from exc
         if not user or not user["is_active"] or not verify_admin_password(login.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="The username or password is incorrect.")
-        if not valid_location_ids(memberships):
+        if not valid_location_ids(memberships, delivery_locations(client)):
             raise HTTPException(status_code=403, detail="This account has no active location assignment.")
         request.session.clear()
         request.session.update({
@@ -523,7 +549,35 @@ def admin_logout(request: Request):
 
 @app.get("/api/delivery-locations")
 def get_delivery_locations():
-    return {"locations": DELIVERY_LOCATIONS}
+    return {"locations": delivery_locations()}
+
+
+@app.post("/api/admin/delivery-locations", status_code=201, dependencies=[Depends(require_owner)])
+def create_delivery_location(location: DeliveryLocationCreate):
+    name = location.name.strip()
+    location_id = re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-")[:40].rstrip("-")
+    if not location_id:
+        raise HTTPException(status_code=422, detail="Use a location name containing letters or numbers.")
+    client = supabase_client()
+    locations = delivery_locations(client)
+    if any(existing["id"] == location_id or existing["name"].casefold() == name.casefold() for existing in locations):
+        raise HTTPException(status_code=409, detail="A location with that name already exists.")
+    if client is None:
+        record = {"id": location_id, "name": name}
+        DELIVERY_LOCATIONS.append(record)
+        for product in DEMO_PRODUCTS:
+            DEMO_LOCATION_STOCK.setdefault(product["id"], {})[location_id] = 0
+        return {"location": record, "mode": "demo"}
+    try:
+        client.table("delivery_locations").insert({
+            "id": location_id,
+            "name": name,
+        }).execute()
+        return {"location": {"id": location_id, "name": name}, "mode": "supabase"}
+    except Exception as exc:
+        if "unique" in str(exc).casefold() or "duplicate" in str(exc).casefold():
+            raise HTTPException(status_code=409, detail="A location with that name already exists.") from exc
+        raise database_setup_error(exc, "The delivery location could not be created.") from exc
 
 
 @app.get("/api/admin/location-admins", dependencies=[Depends(require_owner)])
@@ -537,7 +591,7 @@ def get_location_admins():
             "is_active": user["is_active"],
             "location_ids": user["location_ids"],
             "locations": [
-                location["name"] for location in DELIVERY_LOCATIONS
+                location["name"] for location in delivery_locations()
                 if location["id"] in user["location_ids"]
             ],
         } for user in DEMO_ADMIN_USERS]
@@ -549,7 +603,7 @@ def get_location_admins():
         memberships = client.table("market_admin_user_locations").select(
             "user_id,location_id"
         ).execute().data
-        location_names = {location["id"]: location["name"] for location in DELIVERY_LOCATIONS}
+        location_names = {location["id"]: location["name"] for location in delivery_locations(client)}
         assigned: dict[str, list[str]] = {}
         assigned_ids: dict[str, list[str]] = {}
         for membership in memberships:
@@ -568,11 +622,12 @@ def get_location_admins():
 @app.post("/api/admin/location-admins", status_code=201, dependencies=[Depends(require_owner)])
 def create_location_admin(user: LocationAdminCreate):
     location_ids = list(dict.fromkeys(user.location_ids))
-    if not valid_location_ids(location_ids):
+    client = supabase_client()
+    locations = delivery_locations(client)
+    if not valid_location_ids(location_ids, locations):
         raise HTTPException(status_code=422, detail="Choose one or more valid delivery locations.")
     username = user.username.strip().casefold()
     password_hash = hash_admin_password(user.password)
-    client = supabase_client()
     if client is None:
         if any(existing["username"] == username for existing in DEMO_ADMIN_USERS):
             raise HTTPException(status_code=409, detail="That username is already in use.")
@@ -591,7 +646,7 @@ def create_location_admin(user: LocationAdminCreate):
             "display_name": record["display_name"],
             "is_active": True,
             "location_ids": location_ids,
-            "locations": [location["name"] for location in DELIVERY_LOCATIONS if location["id"] in location_ids],
+            "locations": [location["name"] for location in locations if location["id"] in location_ids],
         }
     try:
         created_id = client.rpc("create_market_admin_user", {
@@ -606,7 +661,7 @@ def create_location_admin(user: LocationAdminCreate):
             "display_name": user.display_name.strip(),
             "is_active": True,
             "location_ids": location_ids,
-            "locations": [location["name"] for location in DELIVERY_LOCATIONS if location["id"] in location_ids],
+            "locations": [location["name"] for location in locations if location["id"] in location_ids],
         }
     except Exception as exc:
         if "unique" in str(exc).casefold() or "duplicate" in str(exc).casefold():
@@ -617,9 +672,9 @@ def create_location_admin(user: LocationAdminCreate):
 @app.patch("/api/admin/location-admins/{user_id}/locations", dependencies=[Depends(require_owner)])
 def update_location_admin_locations(user_id: str, update: LocationAdminLocationsUpdate):
     location_ids = list(dict.fromkeys(update.location_ids))
-    if not valid_location_ids(location_ids):
-        raise HTTPException(status_code=422, detail="Choose one or more valid delivery locations.")
     client = supabase_client()
+    if not valid_location_ids(location_ids, delivery_locations(client)):
+        raise HTTPException(status_code=422, detail="Choose one or more valid delivery locations.")
     if client is None:
         user = next((item for item in DEMO_ADMIN_USERS if item["id"] == user_id), None)
         if user is None:
@@ -715,7 +770,7 @@ def get_admin_orders(
         ).execute().data
         has_more = len(page) > ADMIN_ORDER_PAGE_SIZE
         orders = page[:ADMIN_ORDER_PAGE_SIZE]
-        location_names = {location["id"]: location["name"] for location in DELIVERY_LOCATIONS}
+        location_names = {location["id"]: location["name"] for location in delivery_locations(client)}
         for order in orders:
             order["delivery_location_name"] = location_names.get(order["delivery_location_id"], "Unassigned")
         return {"orders": orders, "has_more": has_more, "mode": "supabase"}
@@ -765,7 +820,7 @@ def get_admin_item_requests():
         ).order("created_at", desc=True).execute().data
         categories = client.table("categories").select("id,name").execute().data
         category_names = {category["id"]: category["name"] for category in categories}
-        location_names = {location["id"]: location["name"] for location in DELIVERY_LOCATIONS}
+        location_names = {location["id"]: location["name"] for location in delivery_locations(client)}
         for item_request in requests:
             item_request["category_name"] = category_names.get(item_request["category_id"], "Unknown category")
             item_request["delivery_location_name"] = location_names.get(item_request["delivery_location_id"], "Unknown location")
@@ -778,11 +833,12 @@ def get_admin_item_requests():
 def get_admin_products(request: Request):
     role = request.session.get("admin_role", "owner")
     location_ids = request.session.get("admin_location_ids", [])
+    client = supabase_client()
+    locations = delivery_locations(client)
     allowed_locations = [
-        location for location in DELIVERY_LOCATIONS
+        location for location in locations
         if role == "owner" or location["id"] in location_ids
     ]
-    client = supabase_client()
     if client is None:
         category_names = {category["id"]: category["name"] for category in CATEGORIES}
         products = [
@@ -828,7 +884,9 @@ def get_admin_products(request: Request):
 def create_product(product: ProductCreate):
     category_id = product.category_id.strip()
     location_ids = set(product.location_stock)
-    if not location_ids <= {location["id"] for location in DELIVERY_LOCATIONS}:
+    client = supabase_client()
+    locations = delivery_locations(client)
+    if not location_ids <= {location["id"] for location in locations}:
         raise HTTPException(status_code=422, detail="Choose only valid delivery locations.")
 
     product_data = {
@@ -842,7 +900,6 @@ def create_product(product: ProductCreate):
     }
     if len(product_data["name"]) < 2 or not product_data["unit"]:
         raise HTTPException(status_code=422, detail="Enter a product name and unit.")
-    client = supabase_client()
     if client is None:
         if not any(category["id"] == category_id for category in CATEGORIES):
             raise HTTPException(status_code=422, detail="Choose a valid product category.")
@@ -856,7 +913,7 @@ def create_product(product: ProductCreate):
         DEMO_PRODUCTS.append({"id": product_id, **product_data, "is_available": True})
         DEMO_LOCATION_STOCK[product_id] = {
             location["id"]: product.location_stock.get(location["id"], 0)
-            for location in DELIVERY_LOCATIONS
+            for location in locations
         }
         return {"product_id": product_id, "mode": "demo"}
 
@@ -1025,12 +1082,13 @@ def delete_product(product_id: str):
 def update_product_stock(product_id: str, location_id: str, update: StockQuantityUpdate, request: Request):
     role = request.session.get("admin_role", "owner")
     assigned_locations = request.session.get("admin_location_ids", [])
-    if not any(location["id"] == location_id for location in DELIVERY_LOCATIONS):
+    client = supabase_client()
+    locations = delivery_locations(client)
+    if not any(location["id"] == location_id for location in locations):
         raise HTTPException(status_code=422, detail="Choose a valid delivery location.")
     if role == "location" and location_id not in assigned_locations:
         raise HTTPException(status_code=403, detail="You can only manage inventory for your assigned locations.")
 
-    client = supabase_client()
     if client is None:
         product = next((item for item in DEMO_PRODUCTS if item["id"] == product_id), None)
         if product is None:
@@ -1059,9 +1117,10 @@ def get_catalog(
     search: str | None = Query(default=None, max_length=100),
     location_id: str | None = Query(default=None, max_length=40),
 ):
-    if location_id is not None and not any(location["id"] == location_id for location in DELIVERY_LOCATIONS):
-        raise HTTPException(status_code=422, detail="Choose a valid delivery location.")
     client = supabase_client()
+    locations = delivery_locations(client)
+    if location_id is not None and not any(location["id"] == location_id for location in locations):
+        raise HTTPException(status_code=422, detail="Choose a valid delivery location.")
     if client is None:
         categories = CATEGORIES
         products = [
@@ -1071,7 +1130,7 @@ def get_catalog(
         inventory = [
             {"product_id": product["id"], "location_id": location["id"],
              "stock_quantity": DEMO_LOCATION_STOCK.get(product["id"], {}).get(location["id"], 0)}
-            for product in products for location in DELIVERY_LOCATIONS
+            for product in products for location in locations
         ]
         mode = "demo"
     else:
@@ -1091,12 +1150,12 @@ def get_catalog(
     product_inventory: dict[str, dict[str, int]] = {}
     for row in inventory:
         product_inventory.setdefault(row["product_id"], {})[row["location_id"]] = row["stock_quantity"]
-    location_names = {location["id"]: location["name"] for location in DELIVERY_LOCATIONS}
+    location_names = {location["id"]: location["name"] for location in locations}
     for product in products:
         product_locations = product_inventory.get(product["id"], {})
         product["available_locations"] = [
             location_names[location["id"]]
-            for location in DELIVERY_LOCATIONS
+            for location in locations
             if product_locations.get(location["id"], 0) > 0
         ]
         product["stock_quantity"] = product_locations.get(location_id, 0) if location_id else 0
@@ -1112,7 +1171,8 @@ def get_catalog(
 
 @app.post("/api/orders")
 def create_order(order: OrderRequest):
-    location = next((item for item in DELIVERY_LOCATIONS if item["id"] == order.delivery_location_id), None)
+    client = supabase_client()
+    location = next((item for item in delivery_locations(client) if item["id"] == order.delivery_location_id), None)
     if location is None:
         raise HTTPException(status_code=422, detail="Please choose a valid delivery location.")
     try:
@@ -1120,7 +1180,6 @@ def create_order(order: OrderRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    client = supabase_client()
     if client is None:
         products = {product["id"]: product for product in DEMO_PRODUCTS}
         order_lines = []
@@ -1281,10 +1340,10 @@ def get_order_status(order_number: str = Query(min_length=8, max_length=8)):
 
 @app.post("/api/item-requests", status_code=201)
 def create_item_request(request: ItemRequest):
-    location = next((item for item in DELIVERY_LOCATIONS if item["id"] == request.delivery_location_id), None)
+    client = supabase_client()
+    location = next((item for item in delivery_locations(client) if item["id"] == request.delivery_location_id), None)
     if location is None:
         raise HTTPException(status_code=422, detail="Please choose a valid delivery location.")
-    client = supabase_client()
     if client is None:
         category = next((item for item in CATEGORIES if item["id"] == request.category_id), None)
         if category is None:

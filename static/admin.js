@@ -230,6 +230,12 @@ function renderLocationOptions(locations) {
   ).join("");
 }
 
+function renderDeliveryLocations(locations) {
+  document.querySelector("#delivery-locations-list").innerHTML = locations.map(location =>
+    `<article class="location-admin-card"><div class="location-admin-heading"><div><strong>${escapeHtml(location.name)}</strong><span>${escapeHtml(location.id)}</span></div></div></article>`
+  ).join("");
+}
+
 function renderProductForm(categories, locations) {
   document.querySelector("#product-category").innerHTML = categories.map(category =>
     `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`
@@ -314,7 +320,10 @@ async function loadDashboard() {
 
   if (locationsResult.status === "fulfilled") {
     adminState.locations = locationsResult.value.locations;
-    if (owner) renderLocationOptions(adminState.locations);
+    if (owner) {
+      renderLocationOptions(adminState.locations);
+      renderDeliveryLocations(adminState.locations);
+    }
   }
 
   if (ordersResult.status === "fulfilled") {
@@ -489,6 +498,26 @@ document.querySelector("#location-admin-form").addEventListener("submit", async 
   } catch (error) {
     showMessage("#location-admin-message", error.message, true);
   } finally { submitButton.disabled = false; }
+});
+
+document.querySelector("#delivery-location-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type=submit]");
+  button.disabled = true;
+  showMessage("#delivery-location-message", "Adding delivery location...");
+  try {
+    const result = await apiRequest("/api/admin/delivery-locations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: new FormData(form).get("name") }),
+    });
+    form.reset();
+    showMessage("#delivery-location-message", `Added ${result.location.name}.`);
+    await loadDashboard();
+  } catch (error) {
+    showMessage("#delivery-location-message", error.message, true);
+  } finally { button.disabled = false; }
 });
 
 document.querySelector("#product-create-form").addEventListener("submit", async event => {

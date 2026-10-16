@@ -13,6 +13,7 @@ client = TestClient(app)
 def test_progressive_web_app_files_are_served():
     manifest_response = client.get("/manifest.webmanifest")
     worker_response = client.get("/service-worker.js")
+    storefront_script_response = client.get("/static/app.js")
     icon_response = client.get("/static/icons/apple-touch-icon.png")
     market_icon_response = client.get("/static/icons/market-icon.svg")
     brand_image_response = client.get("/static/icons/brand-image.png")
@@ -28,6 +29,8 @@ def test_progressive_web_app_files_are_served():
     assert {icon["sizes"] for icon in manifest["icons"]} == {"192x192", "512x512"}
     assert worker_response.status_code == 200
     assert worker_response.headers["service-worker-allowed"] == "/"
+    assert storefront_script_response.status_code == 200
+    assert 'localStorage.getItem("root-river-location") || "skullerud"' in storefront_script_response.text
     assert "root-river-shell-v6" in worker_response.text
     assert '"/manifest.webmanifest"' in worker_response.text
     assert "api" not in worker_response.text.casefold()
@@ -98,6 +101,47 @@ def test_demo_catalog_has_categories_and_products(monkeypatch):
     solli_rice = client.get("/api/catalog?location_id=solli").json()["products"]
     assert next(product for product in solli_rice if product["id"] == "demo-rice")["stock_quantity"] == 10
     assert client.get("/api/catalog?location_id=unknown").status_code == 422
+
+
+def test_super_admin_can_add_delivery_location_and_manage_its_stock(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(app_module, "DELIVERY_LOCATIONS", [dict(location) for location in app_module.DELIVERY_LOCATIONS])
+    monkeypatch.setattr(app_module, "DEMO_LOCATION_STOCK", {
+        product_id: dict(stocks) for product_id, stocks in app_module.DEMO_LOCATION_STOCK.items()
+    })
+
+    with TestClient(app, base_url="https://testserver") as admin_client:
+        assert admin_client.post(
+            "/api/admin/delivery-locations",
+            json={"name": "Oslo Central"},
+        ).status_code == 401
+        assert admin_client.post(
+            "/api/admin/login",
+            json={"password": "test-admin-password"},
+        ).status_code == 200
+        created = admin_client.post(
+            "/api/admin/delivery-locations",
+            json={"name": "Oslo Central"},
+        )
+        assert created.status_code == 201
+        assert created.json()["location"] == {"id": "oslo-central", "name": "Oslo Central"}
+        assert admin_client.post(
+            "/api/admin/delivery-locations",
+            json={"name": "Oslo Central"},
+        ).status_code == 409
+        assert any(
+            location["id"] == "oslo-central"
+            for location in admin_client.get("/api/delivery-locations").json()["locations"]
+        )
+        assert admin_client.patch(
+            "/api/admin/products/demo-rice/stock/oslo-central",
+            json={"stock_quantity": 4},
+        ).status_code == 200
+        catalog = admin_client.get("/api/catalog?location_id=oslo-central")
+        assert catalog.status_code == 200
+        assert next(product for product in catalog.json()["products"] if product["id"] == "demo-rice")["stock_quantity"] == 4
 
 
 def test_super_admin_controls_product_customer_availability(monkeypatch):
@@ -293,7 +337,10 @@ def test_super_admin_can_delete_product_and_preserves_past_order(monkeypatch):
 
 def test_catalog_database_error_is_logged_and_actionable(monkeypatch, caplog):
     class FailingQuery:
+        table_name = ""
+
         def table(self, _name):
+            self.table_name = _name
             return self
 
         def select(self, *_args):
@@ -303,6 +350,8 @@ def test_catalog_database_error_is_logged_and_actionable(monkeypatch, caplog):
             return self
 
         def execute(self):
+            if self.table_name == "delivery_locations":
+                return type("Result", (), {"data": app_module.DELIVERY_LOCATIONS})()
             raise RuntimeError("PGRST205: table not found")
 
     monkeypatch.setattr(app_module, "supabase_client", FailingQuery)
@@ -340,6 +389,21 @@ def test_order_rpc_errors_are_not_all_reported_as_conflicts(monkeypatch, caplog,
             raise RuntimeError(rpc_error)
 
     class FailingClient:
+        table_name = ""
+
+        def table(self, table_name):
+            self.table_name = table_name
+            return self
+
+        def select(self, *_args):
+            return self
+
+        def order(self, *_args, **_kwargs):
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": app_module.DELIVERY_LOCATIONS})()
+
         def rpc(self, *_args, **_kwargs):
             return FailingRpc()
 
