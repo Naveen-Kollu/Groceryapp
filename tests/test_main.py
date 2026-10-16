@@ -98,8 +98,16 @@ def test_demo_catalog_has_categories_and_products(monkeypatch):
     rice = next(product for product in response.json()["products"] if product["id"] == "demo-rice")
     assert rice["stock_quantity"] == 0
     assert rice["available_locations"] == ["Skullerud", "Solli", "Sagane", "Fornebu", "Veitvet"]
+    assert any(
+        product["id"] == "demo-oats" and product["stock_quantity"] == 0
+        for product in response.json()["products"]
+    )
     solli_rice = client.get("/api/catalog?location_id=solli").json()["products"]
     assert next(product for product in solli_rice if product["id"] == "demo-rice")["stock_quantity"] == 10
+    assert any(
+        product["id"] == "demo-oats" and product["stock_quantity"] == 0
+        for product in solli_rice
+    )
     assert client.get("/api/catalog?location_id=unknown").status_code == 422
 
 
@@ -838,7 +846,7 @@ def test_owner_can_create_product_with_location_specific_stock(monkeypatch):
         solli_catalog = owner_client.get("/api/catalog?location_id=solli").json()["products"]
         assert next(product for product in solli_catalog if product["id"] == product_id)["stock_quantity"] == 7
         sagane_catalog = owner_client.get("/api/catalog?location_id=sagane").json()["products"]
-        assert all(product["id"] != product_id for product in sagane_catalog)
+        assert next(product for product in sagane_catalog if product["id"] == product_id)["stock_quantity"] == 0
         assert owner_client.post("/api/admin/products", json=payload).status_code == 409
         assert owner_client.post("/api/admin/products", json={
             **payload,

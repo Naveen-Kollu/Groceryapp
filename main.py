@@ -1207,8 +1207,6 @@ def get_catalog(
             if product_locations.get(location["id"], 0) > 0
         ]
         product["stock_quantity"] = product_locations.get(location_id, 0) if location_id else 0
-    if location_id:
-        products = [product for product in products if product["stock_quantity"] > 0]
     if category:
         products = [product for product in products if product["category_id"] == category]
     if search:
