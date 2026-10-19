@@ -139,14 +139,20 @@ h1 em { color: #789247; font-weight: 500; }
 .feedback-link:hover { color: #32624f; }
 .install-help-button { min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); color: var(--green); cursor: pointer; font-size: 10px; font-weight: 700; }
 .install-help-dialog { width: min(92vw, 420px); padding: 25px; border: 1px solid var(--line); border-top: 3px solid var(--coral); background: var(--white); color: var(--ink); }
-.feedback-dialog { max-height: min(90vh, 760px); overflow-y: auto; }
+.feedback-dialog { width: min(92vw, 840px); max-height: min(90vh, 900px); padding: 40px; overflow-y: auto; }
+.feedback-dialog h2 { font-size: 32px; }
 .feedback-intro { margin: 0 0 15px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.feedback-form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.feedback-form label:nth-of-type(n+4), .feedback-form > button, .feedback-form > p { grid-column: 1 / -1; }
+.feedback-form label { font-size: 12px; }
+.feedback-form input, .feedback-form textarea { min-height: 44px; padding: 12px; font-size: 13px; }
+.feedback-form textarea { min-height: 88px; }
 .customer-feedback-message { white-space: pre-wrap; }
 .install-help-dialog::backdrop { background: #18392f88; }
 .install-help-dialog h2 { margin: 0 28px 12px 0; font-family: var(--serif); font-size: 23px; }
 .install-help-dialog ol { display: grid; gap: 9px; padding-left: 22px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .install-help-dialog > p:last-child { margin: 12px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
-.install-help-dialog form { position: absolute; top: 12px; right: 12px; }
+.install-help-dialog > form:first-child { position: absolute; top: 12px; right: 12px; }
 .install-help-close { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; font-size: 20px; }
 [hidden] { display: none !important; }
 @media (max-width: 1020px) {
@@ -157,6 +163,10 @@ h1 em { color: #789247; font-weight: 500; }
   .product-image-wrap { height: 155px; }
 }
 @media (max-width: 720px) {
+  .feedback-dialog { padding: 32px 20px 20px; }
+  .feedback-dialog h2 { font-size: 25px; }
+  .feedback-form { grid-template-columns: 1fr; gap: 12px; }
+  .feedback-form label:nth-of-type(n+4), .feedback-form > button, .feedback-form > p { grid-column: auto; }
   .topline { padding: 0 4%; }
   .topline span:last-child { display: none; }
   .site-header { display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; grid-template-rows: auto auto auto; gap: 7px 8px; height: auto; min-height: 0; padding: 8px 4%; }

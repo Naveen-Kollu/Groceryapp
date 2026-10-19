@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request as UrlRequest, urlopen
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -106,6 +106,7 @@ class ItemRequest(BaseModel):
 class CustomerFeedback(BaseModel):
     customer_name: str = Field(min_length=2, max_length=120)
     customer_phone: str = Field(min_length=7, max_length=40)
+    customer_email: str | None = Field(default=None, max_length=254)
     customer_address: str = Field(min_length=5, max_length=500)
     message: str = Field(min_length=5, max_length=3000)
 
@@ -113,6 +114,16 @@ class CustomerFeedback(BaseModel):
     @classmethod
     def strip_feedback_fields(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("customer_email", mode="before")
+    @classmethod
+    def normalize_feedback_email(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        email = value.strip()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            raise ValueError("Enter a valid email address.")
+        return email
 
 
 class AdminLogin(BaseModel):
@@ -897,11 +908,34 @@ def get_admin_feedback():
         return {"feedback": DEMO_FEEDBACK, "mode": "demo"}
     try:
         feedback = client.table("customer_feedback").select(
-            "id,customer_name,customer_phone,customer_address,message,created_at"
+            "id,customer_name,customer_phone,customer_email,customer_address,message,created_at"
         ).order("created_at", desc=True).execute().data
         return {"feedback": feedback, "mode": "supabase"}
     except Exception as exc:
         raise database_setup_error(exc, "Customer feedback is temporarily unavailable.") from exc
+
+
+@app.delete("/api/admin/feedback/{feedback_id}", dependencies=[Depends(require_owner)])
+def delete_customer_feedback(feedback_id: UUID):
+    client = supabase_client()
+    if client is None:
+        feedback_index = next(
+            (index for index, entry in enumerate(DEMO_FEEDBACK) if entry["id"] == str(feedback_id)),
+            None,
+        )
+        if feedback_index is None:
+            raise HTTPException(status_code=404, detail="Customer feedback not found.")
+        DEMO_FEEDBACK.pop(feedback_index)
+        return {"feedback_id": str(feedback_id), "mode": "demo"}
+    try:
+        deleted = client.table("customer_feedback").delete().eq("id", str(feedback_id)).select("id").execute().data
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Customer feedback not found.")
+        return {"feedback_id": str(feedback_id), "mode": "supabase"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise database_setup_error(exc, "Customer feedback could not be deleted.") from exc
 
 
 @app.get("/api/admin/products", dependencies=[Depends(require_admin)])
@@ -1416,6 +1450,7 @@ def create_feedback(feedback: CustomerFeedback):
     record = {
         "customer_name": feedback.customer_name,
         "customer_phone": feedback.customer_phone,
+        "customer_email": feedback.customer_email,
         "customer_address": feedback.customer_address,
         "message": feedback.message,
     }

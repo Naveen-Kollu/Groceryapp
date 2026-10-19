@@ -112,6 +112,7 @@
     <form id="feedback-form" class="checkout-form feedback-form">
       <label>Your name<input name="customer_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Full name"></label>
       <label>Phone number<input name="customer_phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" placeholder="Phone number"></label>
+      <label>Email <span class="optional">OPTIONAL</span><input name="customer_email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
       <label>Address<textarea name="customer_address" required minlength="5" maxlength="500" rows="2" autocomplete="street-address" placeholder="Your address"></textarea></label>
       <label>Feedback or complaint<textarea name="message" required minlength="5" maxlength="3000" rows="5" placeholder="Write your feedback or complaint"></textarea></label>
       <button class="button button-dark" type="submit">Submit feedback</button>

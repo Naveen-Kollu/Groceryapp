@@ -118,10 +118,14 @@ create table if not exists public.customer_feedback (
     id uuid primary key default gen_random_uuid(),
     customer_name text not null,
     customer_phone text not null,
+    customer_email text,
     customer_address text not null,
     message text not null,
     created_at timestamptz not null default now()
 );
+
+alter table public.customer_feedback
+    add column if not exists customer_email text;
 
 insert into public.categories (id, name, slug, sort_order) values
     ('vegetables', 'Indian Breakfast', 'indian-breakfast', 1),

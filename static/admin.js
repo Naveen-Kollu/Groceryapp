@@ -120,10 +120,28 @@ function renderCustomerFeedback(feedbackEntries) {
   container.innerHTML = feedbackEntries.map(entry => {
     const createdAt = entry.created_at ? new Date(entry.created_at).toLocaleString() : "Time unavailable";
     return `<article class="order-card">
-      <div class="order-topline"><div><span class="order-reference">CUSTOMER FEEDBACK</span><span class="order-date">${escapeHtml(createdAt)}</span></div></div>
-      <div class="request-body"><div class="order-customer"><h3>${escapeHtml(entry.customer_name)}</h3><p>Phone: ${escapeHtml(entry.customer_phone)}</p><p>Address: ${escapeHtml(entry.customer_address)}</p><p class="customer-feedback-message">${escapeHtml(entry.message)}</p></div></div>
+      <div class="order-topline"><div><span class="order-reference">CUSTOMER FEEDBACK</span><span class="order-date">${escapeHtml(createdAt)}</span></div><button class="delete-product-button" type="button" data-delete-feedback="${escapeHtml(entry.id)}" data-feedback-name="${escapeHtml(entry.customer_name)}">Delete</button></div>
+      <div class="request-body"><div class="order-customer"><h3>${escapeHtml(entry.customer_name)}</h3><p>Phone: ${escapeHtml(entry.customer_phone)}</p>${entry.customer_email ? `<p>Email: ${escapeHtml(entry.customer_email)}</p>` : ""}<p>Address: ${escapeHtml(entry.customer_address)}</p><p class="customer-feedback-message">${escapeHtml(entry.message)}</p></div></div>
     </article>`;
   }).join("");
+  container.querySelectorAll("[data-delete-feedback]").forEach(button =>
+    button.addEventListener("click", () => deleteCustomerFeedback(button))
+  );
+}
+
+async function deleteCustomerFeedback(button) {
+  const feedbackId = button.dataset.deleteFeedback;
+  if (!window.confirm(`Delete the feedback or complaint submitted by ${button.dataset.feedbackName}? This cannot be undone.`)) return;
+  button.disabled = true;
+  try {
+    await apiRequest(`/api/admin/feedback/${encodeURIComponent(feedbackId)}`, { method: "DELETE" });
+    await loadDashboard();
+  } catch (error) {
+    document.querySelector("#customer-feedback-list").insertAdjacentHTML(
+      "afterbegin",
+      `<p class="admin-empty is-error">${escapeHtml(error.message)}</p>`,
+    );
+  } finally { button.disabled = false; }
 }
 
 function renderProducts(products) {

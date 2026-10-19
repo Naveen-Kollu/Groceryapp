@@ -31,7 +31,7 @@ def test_progressive_web_app_files_are_served():
     assert worker_response.headers["service-worker-allowed"] == "/"
     assert storefront_script_response.status_code == 200
     assert 'localStorage.getItem("root-river-location") || "skullerud"' in storefront_script_response.text
-    assert "root-river-shell-v7" in worker_response.text
+    assert "root-river-shell-v8" in worker_response.text
     assert '"/manifest.webmanifest"' in worker_response.text
     assert "api" not in worker_response.text.casefold()
     assert icon_response.status_code == 200
@@ -55,6 +55,7 @@ def test_progressive_web_app_files_are_served():
     assert b"Feedback or complaint" in page
     assert b'id="feedback-form"' in page
     assert b'name="customer_address"' in page
+    assert b'name="customer_email" type="email"' in page
     assert b'name="message"' in page
 
 
@@ -68,15 +69,24 @@ def test_customer_feedback_is_saved_and_only_visible_to_owner(monkeypatch):
         submitted = feedback_client.post("/api/feedback", json={
             "customer_name": "A Customer",
             "customer_phone": "+4712345678",
+            "customer_email": " customer@example.com ",
             "customer_address": "1 Main Street, Oslo",
             "message": "Please improve the delivery updates.",
         })
         assert submitted.status_code == 201
         assert submitted.json()["mode"] == "demo"
         assert feedback_client.get("/api/admin/feedback").status_code == 401
+        assert feedback_client.delete(f"/api/admin/feedback/{submitted.json()['feedback_id']}").status_code == 401
         assert feedback_client.post("/api/feedback", json={
             "customer_name": "  ",
             "customer_phone": "1234567",
+            "customer_address": "1 Main Street",
+            "message": "Valid feedback",
+        }).status_code == 422
+        assert feedback_client.post("/api/feedback", json={
+            "customer_name": "A Customer",
+            "customer_phone": "1234567",
+            "customer_email": "not-an-email",
             "customer_address": "1 Main Street",
             "message": "Valid feedback",
         }).status_code == 422
@@ -88,15 +98,21 @@ def test_customer_feedback_is_saved_and_only_visible_to_owner(monkeypatch):
         saved_feedback = response.json()["feedback"][0]
         assert {
             key: saved_feedback[key]
-            for key in ("id", "customer_name", "customer_phone", "customer_address", "message")
+            for key in ("id", "customer_name", "customer_phone", "customer_email", "customer_address", "message")
         } == {
             "id": submitted.json()["feedback_id"],
             "customer_name": "A Customer",
             "customer_phone": "+4712345678",
+            "customer_email": "customer@example.com",
             "customer_address": "1 Main Street, Oslo",
             "message": "Please improve the delivery updates.",
         }
         assert saved_feedback["created_at"]
+        deleted = feedback_client.delete(f"/api/admin/feedback/{submitted.json()['feedback_id']}")
+        assert deleted.status_code == 200
+        assert feedback_client.get("/api/admin/feedback").json()["feedback"] == []
+        assert feedback_client.delete(f"/api/admin/feedback/{submitted.json()['feedback_id']}").status_code == 404
+        assert feedback_client.delete("/api/admin/feedback/not-a-uuid").status_code == 422
 
 
 def test_order_items_merge_duplicate_products():
