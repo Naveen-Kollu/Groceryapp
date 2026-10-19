@@ -114,6 +114,15 @@ alter table public.customer_item_requests
 alter table public.customer_item_requests
     add column if not exists delivery_address text;
 
+create table if not exists public.customer_feedback (
+    id uuid primary key default gen_random_uuid(),
+    customer_name text not null,
+    customer_phone text not null,
+    customer_address text not null,
+    message text not null,
+    created_at timestamptz not null default now()
+);
+
 insert into public.categories (id, name, slug, sort_order) values
     ('vegetables', 'Indian Breakfast', 'indian-breakfast', 1),
     ('fruits', 'Indian Snacks', 'indian-snacks', 2),

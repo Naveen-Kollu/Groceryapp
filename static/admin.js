@@ -32,6 +32,7 @@ function setSignedIn(signedIn, session = {}) {
   adminState.role = signedIn ? session.role || "owner" : null;
   adminState.locationIds = signedIn ? session.location_ids || [] : [];
   document.querySelector("#owner-requests-section").hidden = !signedIn || adminState.role !== "owner";
+  document.querySelector("#owner-feedback-section").hidden = !signedIn || adminState.role !== "owner";
   document.querySelector("#owner-prices-section").hidden = !signedIn || adminState.role !== "owner";
   document.querySelector("#location-admins-section").hidden = !signedIn || adminState.role !== "owner";
   document.querySelector("#inventory-section").hidden = !signedIn;
@@ -106,6 +107,21 @@ function renderItemRequests(requests) {
     return `<article class="order-card">
       <div class="order-topline"><div><span class="order-reference">ITEM REQUEST</span><span class="order-date">${escapeHtml(createdAt)}</span></div><span class="order-status">${escapeHtml(request.status || "new")}</span></div>
       <div class="request-body"><div class="order-customer"><h3>${escapeHtml(request.requested_name)}</h3><p>Category: ${escapeHtml(request.category_name || request.category_id || "Unspecified")}</p><p>Requested for: ${escapeHtml(request.delivery_location_name || "Unknown location")}</p><p>Requested by ${escapeHtml(request.customer_name)} · ${escapeHtml(request.customer_phone)}</p><p>Delivery address: ${escapeHtml(request.delivery_address || "Not provided")}</p>${request.note ? `<p>${escapeHtml(request.note)}</p>` : ""}</div></div>
+    </article>`;
+  }).join("");
+}
+
+function renderCustomerFeedback(feedbackEntries) {
+  const container = document.querySelector("#customer-feedback-list");
+  if (!feedbackEntries.length) {
+    container.innerHTML = '<p class="admin-empty">No customer feedback or complaints yet.</p>';
+    return;
+  }
+  container.innerHTML = feedbackEntries.map(entry => {
+    const createdAt = entry.created_at ? new Date(entry.created_at).toLocaleString() : "Time unavailable";
+    return `<article class="order-card">
+      <div class="order-topline"><div><span class="order-reference">CUSTOMER FEEDBACK</span><span class="order-date">${escapeHtml(createdAt)}</span></div></div>
+      <div class="request-body"><div class="order-customer"><h3>${escapeHtml(entry.customer_name)}</h3><p>Phone: ${escapeHtml(entry.customer_phone)}</p><p>Address: ${escapeHtml(entry.customer_address)}</p><p class="customer-feedback-message">${escapeHtml(entry.message)}</p></div></div>
     </article>`;
   }).join("");
 }
@@ -334,9 +350,13 @@ async function loadDashboard() {
     apiRequest("/api/admin/products"),
     apiRequest("/api/delivery-locations"),
   ];
-  if (owner) tasks.push(apiRequest("/api/admin/item-requests"), apiRequest("/api/admin/location-admins"));
+  if (owner) tasks.push(
+    apiRequest("/api/admin/item-requests"),
+    apiRequest("/api/admin/feedback"),
+    apiRequest("/api/admin/location-admins"),
+  );
   const results = await Promise.allSettled(tasks);
-  const [ordersResult, productsResult, locationsResult, requestsResult, usersResult] = results;
+  const [ordersResult, productsResult, locationsResult, requestsResult, feedbackResult, usersResult] = results;
 
   if (locationsResult.status === "fulfilled") {
     adminState.locations = locationsResult.value.locations;
@@ -372,6 +392,11 @@ async function loadDashboard() {
       renderItemRequests(requestsResult.value.requests);
     } else {
       document.querySelector("#item-requests-list").innerHTML = `<p class="admin-empty is-error">${escapeHtml(requestsResult.reason.message)}</p>`;
+    }
+    if (feedbackResult.status === "fulfilled") {
+      renderCustomerFeedback(feedbackResult.value.feedback);
+    } else {
+      document.querySelector("#customer-feedback-list").innerHTML = `<p class="admin-empty is-error">${escapeHtml(feedbackResult.reason.message)}</p>`;
     }
     if (productsResult.status === "fulfilled") {
       renderProducts(productsResult.value.products);

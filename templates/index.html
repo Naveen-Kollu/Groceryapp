@@ -102,8 +102,22 @@
         <p class="basket-footnote">Your order is confirmed after you submit it.</p>
       </aside>
     </div>
-    <footer class="site-footer"><span>NEIGHBORHOOD FOOD COURT</span><span>Good food belongs to everyone.</span><a href="#category-list" id="request-shortcut">Have an item in mind? Tell us ↗</a><button id="install-help-button" class="install-help-button" type="button">Add to iPhone Home Screen</button></footer>
+    <footer class="site-footer"><span>NEIGHBORHOOD FOOD COURT</span><button id="feedback-button" class="feedback-link" type="button">Feedback or complaint</button><a href="#category-list" id="request-shortcut">Have an item in mind? Tell us ↗</a><button id="install-help-button" class="install-help-button" type="button">Add to iPhone Home Screen</button></footer>
   </main>
+  <dialog id="feedback-dialog" class="install-help-dialog feedback-dialog">
+    <form method="dialog"><button class="install-help-close" aria-label="Close">×</button></form>
+    <p class="eyebrow">WE'RE LISTENING</p>
+    <h2>Share feedback or make a complaint</h2>
+    <p class="feedback-intro">Tell us what happened or how we can improve. Your contact details help us follow up.</p>
+    <form id="feedback-form" class="checkout-form feedback-form">
+      <label>Your name<input name="customer_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Full name"></label>
+      <label>Phone number<input name="customer_phone" type="tel" required minlength="7" maxlength="40" autocomplete="tel" placeholder="Phone number"></label>
+      <label>Address<textarea name="customer_address" required minlength="5" maxlength="500" rows="2" autocomplete="street-address" placeholder="Your address"></textarea></label>
+      <label>Feedback or complaint<textarea name="message" required minlength="5" maxlength="3000" rows="5" placeholder="Write your feedback or complaint"></textarea></label>
+      <button class="button button-dark" type="submit">Submit feedback</button>
+      <p id="feedback-message" class="form-message" role="status"></p>
+    </form>
+  </dialog>
   <dialog id="install-help-dialog" class="install-help-dialog">
     <form method="dialog"><button class="install-help-close" aria-label="Close">×</button></form>
     <p class="eyebrow">NEIGHBORHOOD FOOD COURT ON YOUR IPHONE</p>

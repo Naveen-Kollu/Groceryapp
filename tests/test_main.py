@@ -31,7 +31,7 @@ def test_progressive_web_app_files_are_served():
     assert worker_response.headers["service-worker-allowed"] == "/"
     assert storefront_script_response.status_code == 200
     assert 'localStorage.getItem("root-river-location") || "skullerud"' in storefront_script_response.text
-    assert "root-river-shell-v6" in worker_response.text
+    assert "root-river-shell-v7" in worker_response.text
     assert '"/manifest.webmanifest"' in worker_response.text
     assert "api" not in worker_response.text.casefold()
     assert icon_response.status_code == 200
@@ -52,6 +52,51 @@ def test_progressive_web_app_files_are_served():
     assert b"Whenever you crave a" in page
     assert b"taste of home" in page
     assert b"motherland" in page
+    assert b"Feedback or complaint" in page
+    assert b'id="feedback-form"' in page
+    assert b'name="customer_address"' in page
+    assert b'name="message"' in page
+
+
+def test_customer_feedback_is_saved_and_only_visible_to_owner(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setattr(app_module, "DEMO_FEEDBACK", [])
+
+    with TestClient(app, base_url="https://testserver") as feedback_client:
+        submitted = feedback_client.post("/api/feedback", json={
+            "customer_name": "A Customer",
+            "customer_phone": "+4712345678",
+            "customer_address": "1 Main Street, Oslo",
+            "message": "Please improve the delivery updates.",
+        })
+        assert submitted.status_code == 201
+        assert submitted.json()["mode"] == "demo"
+        assert feedback_client.get("/api/admin/feedback").status_code == 401
+        assert feedback_client.post("/api/feedback", json={
+            "customer_name": "  ",
+            "customer_phone": "1234567",
+            "customer_address": "1 Main Street",
+            "message": "Valid feedback",
+        }).status_code == 422
+
+        login = feedback_client.post("/api/admin/login", json={"password": "test-admin-password"})
+        assert login.status_code == 200
+        response = feedback_client.get("/api/admin/feedback")
+        assert response.status_code == 200
+        saved_feedback = response.json()["feedback"][0]
+        assert {
+            key: saved_feedback[key]
+            for key in ("id", "customer_name", "customer_phone", "customer_address", "message")
+        } == {
+            "id": submitted.json()["feedback_id"],
+            "customer_name": "A Customer",
+            "customer_phone": "+4712345678",
+            "customer_address": "1 Main Street, Oslo",
+            "message": "Please improve the delivery updates.",
+        }
+        assert saved_feedback["created_at"]
 
 
 def test_order_items_merge_duplicate_products():

@@ -71,6 +71,7 @@ DEMO_LOCATION_STOCK = {
 }
 DEMO_ORDERS: list[dict[str, Any]] = []
 DEMO_ITEM_REQUESTS: list[dict[str, Any]] = []
+DEMO_FEEDBACK: list[dict[str, Any]] = []
 DEMO_ADMIN_USERS: list[dict[str, Any]] = []
 PASSWORD_HASH_ITERATIONS = 310_000
 ADMIN_ORDER_PAGE_SIZE = 10
@@ -100,6 +101,18 @@ class ItemRequest(BaseModel):
     delivery_location_id: str = Field(min_length=1, max_length=40)
     delivery_address: str = Field(min_length=5, max_length=500)
     note: str | None = Field(default=None, max_length=500)
+
+
+class CustomerFeedback(BaseModel):
+    customer_name: str = Field(min_length=2, max_length=120)
+    customer_phone: str = Field(min_length=7, max_length=40)
+    customer_address: str = Field(min_length=5, max_length=500)
+    message: str = Field(min_length=5, max_length=3000)
+
+    @field_validator("customer_name", "customer_phone", "customer_address", "message", mode="before")
+    @classmethod
+    def strip_feedback_fields(cls, value: str) -> str:
+        return value.strip()
 
 
 class AdminLogin(BaseModel):
@@ -877,6 +890,20 @@ def get_admin_item_requests():
         raise HTTPException(status_code=503, detail="Customer requests are temporarily unavailable.") from exc
 
 
+@app.get("/api/admin/feedback", dependencies=[Depends(require_owner)])
+def get_admin_feedback():
+    client = supabase_client()
+    if client is None:
+        return {"feedback": DEMO_FEEDBACK, "mode": "demo"}
+    try:
+        feedback = client.table("customer_feedback").select(
+            "id,customer_name,customer_phone,customer_address,message,created_at"
+        ).order("created_at", desc=True).execute().data
+        return {"feedback": feedback, "mode": "supabase"}
+    except Exception as exc:
+        raise database_setup_error(exc, "Customer feedback is temporarily unavailable.") from exc
+
+
 @app.get("/api/admin/products", dependencies=[Depends(require_admin)])
 def get_admin_products(request: Request):
     role = request.session.get("admin_role", "owner")
@@ -1382,6 +1409,36 @@ def get_order_status(order_number: str = Query(min_length=8, max_length=8)):
         raise
     except Exception as exc:
         raise HTTPException(status_code=503, detail="Order status is temporarily unavailable.") from exc
+
+
+@app.post("/api/feedback", status_code=201)
+def create_feedback(feedback: CustomerFeedback):
+    record = {
+        "customer_name": feedback.customer_name,
+        "customer_phone": feedback.customer_phone,
+        "customer_address": feedback.customer_address,
+        "message": feedback.message,
+    }
+    client = supabase_client()
+    if client is None:
+        saved_feedback = {
+            "id": str(uuid4()),
+            **record,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        DEMO_FEEDBACK.insert(0, saved_feedback)
+        return {"feedback_id": saved_feedback["id"], "mode": "demo", "message": "Thank you. Your feedback has been sent."}
+    try:
+        result = client.table("customer_feedback").insert(record).execute()
+        if not result.data:
+            raise RuntimeError("The feedback submission did not return a saved record.")
+        return {
+            "feedback_id": result.data[0]["id"],
+            "mode": "supabase",
+            "message": "Thank you. Your feedback has been sent.",
+        }
+    except Exception as exc:
+        raise database_setup_error(exc, "Your feedback could not be submitted right now. Please try again.") from exc
 
 
 @app.post("/api/item-requests", status_code=201)

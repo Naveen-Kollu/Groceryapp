@@ -135,8 +135,13 @@ h1 em { color: #789247; font-weight: 500; }
 .site-footer span:first-child { color: var(--green); font-weight: 700; letter-spacing: 1px; }
 .site-footer a { color: var(--green); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
+.feedback-link { padding: 0; border: 0; background: transparent; color: var(--green); cursor: pointer; font: inherit; text-decoration: underline; }
+.feedback-link:hover { color: #32624f; }
 .install-help-button { min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); color: var(--green); cursor: pointer; font-size: 10px; font-weight: 700; }
 .install-help-dialog { width: min(92vw, 420px); padding: 25px; border: 1px solid var(--line); border-top: 3px solid var(--coral); background: var(--white); color: var(--ink); }
+.feedback-dialog { max-height: min(90vh, 760px); overflow-y: auto; }
+.feedback-intro { margin: 0 0 15px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.customer-feedback-message { white-space: pre-wrap; }
 .install-help-dialog::backdrop { background: #18392f88; }
 .install-help-dialog h2 { margin: 0 28px 12px 0; font-family: var(--serif); font-size: 23px; }
 .install-help-dialog ol { display: grid; gap: 9px; padding-left: 22px; color: var(--muted); font-size: 12px; line-height: 1.5; }

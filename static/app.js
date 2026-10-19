@@ -294,6 +294,33 @@ document.querySelector("#request-form").addEventListener("submit", async event =
   } finally { submitButton.disabled = false; }
 });
 
+const feedbackDialog = document.querySelector("#feedback-dialog");
+document.querySelector("#feedback-button").addEventListener("click", () => feedbackDialog.showModal());
+feedbackDialog.addEventListener("click", event => {
+  if (event.target === feedbackDialog) feedbackDialog.close();
+});
+document.querySelector("#feedback-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const submitButton = form.querySelector("button[type=submit]");
+  submitButton.disabled = true;
+  showFormMessage("#feedback-message", "Sending your feedback...");
+  const payload = Object.fromEntries(new FormData(form).entries());
+  try {
+    const response = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || "Your feedback could not be submitted.");
+    form.reset();
+    showFormMessage("#feedback-message", result.message);
+  } catch (error) {
+    showFormMessage("#feedback-message", error.message, true);
+  } finally { submitButton.disabled = false; }
+});
+
 document.querySelector("#delivery-location").addEventListener("change", event => {
   const nextLocation = event.target.value;
   if (nextLocation === state.selectedLocation) return;
